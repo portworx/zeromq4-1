@@ -36,6 +36,7 @@
 #include "config.hpp"
 #include "atomic_counter.hpp"
 #include "metadata.hpp"
+#include <sys/uio.h>
 
 //  Signature for free function to deallocate the message content.
 //  Note that it has to be declared as "C" so that it is the same as
@@ -70,11 +71,16 @@ namespace zmq
         int init_size (size_t size_);
         int init_data (void *data_, size_t size_, msg_free_fn *ffn_,
             void *hint_);
+        int init_iov(iovec *iov, int iovcnt, size_t size, msg_free_fn *ffn_, void *hint);
         int init_delimiter ();
         int close ();
         int move (msg_t &src_);
         int copy (msg_t &src_);
         void *data ();
+        void *buf(int index);
+        iovec *iov();
+        int num_bufs();
+        size_t buf_size(int index);
         size_t size ();
         unsigned char flags ();
         void set_flags (unsigned char flags_);
@@ -103,7 +109,7 @@ namespace zmq
         //  Size in bytes of the largest message that is still copied around
         //  rather than being reference-counted.
         enum { msg_t_size = 64 };
-        enum { max_vsm_size = msg_t_size - (8 + sizeof (metadata_t *) + 3) };
+        enum { max_vsm_size = msg_t_size - (8 + sizeof(iovec) + sizeof (metadata_t *) + 2) };
 
         //  Shared message buffer. Message data are either allocated in one
         //  continuous block along with this structure - thus avoiding one
@@ -114,10 +120,11 @@ namespace zmq
         //  references.
         struct content_t
         {
-            void *data;
+            iovec *data_iov;
             size_t size;
             msg_free_fn *ffn;
             void *hint;
+            int iovcnt;
             zmq::atomic_counter_t refcnt;
         };
 
@@ -152,8 +159,8 @@ namespace zmq
             } base;
             struct {
                 metadata_t *metadata;
+                iovec iov;
                 unsigned char data [max_vsm_size];
-                unsigned char size;
                 unsigned char type;
                 unsigned char flags;
             } vsm;
@@ -166,10 +173,9 @@ namespace zmq
             } lmsg;
             struct {
                 metadata_t *metadata;
-                void* data;
-                size_t size;
+                iovec iov;
                 unsigned char unused
-                    [msg_t_size - (8 + sizeof (metadata_t *) + sizeof (void*) + sizeof (size_t) + 2)];
+                    [msg_t_size - (8 + sizeof (metadata_t *) + sizeof (iovec) + 2)];
                 unsigned char type;
                 unsigned char flags;
             } cmsg;

@@ -78,6 +78,10 @@ void do_check(void* sb, void* sc, unsigned int msgsz)
 
 }
 
+void free_fn(void *, void *)
+{
+}
+
 int main (void)
 {
     void *ctx = zmq_ctx_new ();
@@ -102,6 +106,125 @@ int main (void)
 
     // message smaller than vsm max
     do_check(sb,sc,10);
+
+    char buf_1[100];
+    char buf_2[100];
+
+    zmq_msg_t req;
+    struct iovec iov[2];
+    iov[0].iov_len = 10;
+    iov[0].iov_base = buf_1;
+    iov[1].iov_len = 20;
+    iov[1].iov_base = buf_2;
+    memset(iov[0].iov_base, 'a', 100);
+    memset(iov[1].iov_base, 'b', 100);
+    rc = zmq_msg_init_iov(&req, iov, 2, free_fn, iov);
+    assert(rc == 0);
+
+    rc = zmq_msg_send(&req, sc, 0);
+    assert(rc == 30);
+
+    zmq_msg_t rsp;
+    zmq_msg_init(&rsp);
+    rc = zmq_msg_recv(&rsp, sb, 0);
+    assert(rc == 30);
+
+    assert(zmq_msg_size(&rsp) == 30);
+    assert(zmq_msg_iovcnt(&rsp) == 2);
+    assert(zmq_msg_iov(&rsp) == iov);
+
+    void *srep = zmq_socket (ctx, ZMQ_REP);
+    assert(srep);
+
+    rc = zmq_bind(srep, "tcp://127.0.0.1:5001");
+    assert(rc == 0);
+
+    void *sreq = zmq_socket (ctx, ZMQ_REQ);
+    assert(sreq);
+
+    rc = zmq_connect(sreq, "tcp://127.0.0.1:5001");
+    assert(rc == 0);
+
+    char buf_c[200];
+    memset(buf_c, 'c', 200);
+
+    zmq_msg_t req_simple;
+    zmq_msg_init_size(&req_simple, 200);
+    memset(zmq_msg_data(&req_simple), 'c', 200);
+
+    rc = zmq_msg_send(&req_simple, sreq, 0);
+    assert(rc == 200);
+    zmq_msg_close(&req_simple);
+
+    zmq_msg_init(&req_simple);
+    rc = zmq_msg_recv(&req_simple, srep, 0);
+    assert(rc == 200);
+    assert(!memcmp(zmq_msg_data(&req_simple), buf_c, 200));
+
+    rc = zmq_msg_send(&req_simple, srep, 0);
+    assert(rc == 200);
+    zmq_msg_close(&req_simple);
+
+    zmq_msg_init(&req_simple);
+    rc = zmq_msg_recv(&req_simple, sreq, 0);
+    assert(rc == 200);
+    assert(!memcmp(zmq_msg_data(&req_simple), buf_c, 200));
+    zmq_msg_close(&req_simple);
+
+    rc = zmq_msg_init_iov(&req, iov, 2, free_fn, iov);
+    assert(rc == 0);
+
+    rc = zmq_msg_send(&req, sreq, 0);
+    assert(rc == 30);
+
+    zmq_msg_close(&rsp);
+    zmq_msg_init(&rsp);
+    rc = zmq_msg_recv(&rsp, srep, 0);
+    assert(rc == 30);
+
+    assert(!memcmp(zmq_msg_data(&rsp), iov[0].iov_base, iov[0].iov_len));
+    assert(!memcmp((char *)zmq_msg_data(&rsp) + iov[0].iov_len, iov[1].iov_base, iov[1].iov_len));
+
+    rc = zmq_msg_send(&rsp, srep, 0);
+    assert(rc == 30);
+    zmq_msg_close(&rsp);
+
+    zmq_msg_close(&req);
+
+    zmq_msg_init(&req);
+    rc = zmq_msg_recv(&req, sreq, 0);
+    assert(rc == 30);
+
+    struct iovec *iov_1 = new iovec[100];
+    for (int i = 0; i < 100; ++i) {
+        iov_1[i].iov_base = new char[100];
+        iov_1[i].iov_len = 100;
+        memset(iov_1[i].iov_base, i, 100);
+    }
+
+    rc = zmq_msg_init_iov(&req, iov_1, 100, free_fn, iov);
+    assert(rc == 0);
+
+    rc = zmq_msg_send(&req, sreq, 0);
+    assert(rc == 100 * 100);
+
+    zmq_msg_close(&rsp);
+    zmq_msg_init(&rsp);
+    rc = zmq_msg_recv(&rsp, srep, 0);
+    assert(rc == 100 * 100);
+
+    int off = 0;
+    char *d = (char *)zmq_msg_data(&rsp);
+    for (int i = 0; i < 100; ++i, off += 100) {
+        assert(!memcmp(d + off, iov_1[i].iov_base, 100));
+    }
+    zmq_msg_close(&rsp);
+
+    rc = zmq_close(srep);
+    assert (rc == 0);
+
+    rc = zmq_close(sreq);
+    assert (rc == 0);
 
     rc = zmq_close (sc);
     assert (rc == 0);

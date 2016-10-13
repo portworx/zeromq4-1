@@ -580,6 +580,21 @@ int zmq_msg_init_data (zmq_msg_t *msg_, void *data_, size_t size_,
     return ((zmq::msg_t*) msg_)->init_data (data_, size_, ffn_, hint_);
 }
 
+int zmq_msg_init_iov (zmq_msg_t *msg, struct iovec *iov,
+                      int iovcnt, zmq_free_fn *ffn, void *hint)
+{
+    size_t size = 0;
+    for (int i = 0; i < iovcnt; ++i)
+        size += iov[i].iov_len;
+    return zmq_msg_init_iov_size(msg, iov, iovcnt, size, ffn, hint);
+}
+
+int zmq_msg_init_iov_size (zmq_msg_t *msg_, struct iovec *iov,
+                      int iovcnt, size_t size, zmq_free_fn *ffn, void *hint)
+{
+    return ((zmq::msg_t*) msg_)->init_iov(iov, iovcnt, size, ffn, hint);
+}
+
 int zmq_msg_send (zmq_msg_t *msg_, void *s_, int flags_)
 {
     if (!s_ || !((zmq::socket_base_t*) s_)->check_tag ()) {
@@ -625,6 +640,16 @@ void *zmq_msg_data (zmq_msg_t *msg_)
 size_t zmq_msg_size (zmq_msg_t *msg_)
 {
     return ((zmq::msg_t*) msg_)->size ();
+}
+
+iovec *zmq_msg_iov (zmq_msg_t *msg_)
+{
+    return ((zmq::msg_t*) msg_)->iov ();
+}
+
+int zmq_msg_iovcnt (zmq_msg_t *msg_)
+{
+    return ((zmq::msg_t*) msg_)->num_bufs ();
 }
 
 int zmq_msg_more (zmq_msg_t *msg_)

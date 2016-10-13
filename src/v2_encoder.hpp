@@ -49,6 +49,8 @@ namespace zmq
         void message_ready ();
 
         unsigned char tmpbuf [9];
+        int num_bufs;
+        int index;
 
         v2_encoder_t (const v2_encoder_t&);
         const v2_encoder_t &operator = (const v2_encoder_t&);

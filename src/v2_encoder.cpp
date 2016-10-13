@@ -33,7 +33,7 @@
 #include "wire.hpp"
 
 zmq::v2_encoder_t::v2_encoder_t (size_t bufsize_) :
-    encoder_base_t <v2_encoder_t> (bufsize_)
+    encoder_base_t <v2_encoder_t> (bufsize_), num_bufs(0), index(0)
 {
     //  Write 0 bytes to the batch and go to message_ready state.
     next_step (NULL, 0, &v2_encoder_t::message_ready, true);
@@ -59,6 +59,8 @@ void zmq::v2_encoder_t::message_ready ()
     //  the length is encoded as 8-bit unsigned integer. For larger
     //  messages, 64-bit unsigned integer in network byte order is used.
     const size_t size = in_progress->size ();
+    num_bufs = in_progress->num_bufs();
+    index = 0;
     if (unlikely (size > 255)) {
         put_uint64 (tmpbuf + 1, size);
         next_step (tmpbuf, 9, &v2_encoder_t::size_ready, false);
@@ -72,6 +74,8 @@ void zmq::v2_encoder_t::message_ready ()
 void zmq::v2_encoder_t::size_ready ()
 {
     //  Write message body into the buffer.
-    next_step (in_progress->data (), in_progress->size (),
-        &v2_encoder_t::message_ready, true);
+    bool end = index + 1 == num_bufs;
+    next_step (in_progress->buf (index), in_progress->buf_size (index),
+        end ? &v2_encoder_t::message_ready : &v2_encoder_t::size_ready, end);
+    ++index;
 }
