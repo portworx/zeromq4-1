@@ -108,7 +108,7 @@ namespace zmq
         //  Size in bytes of the largest message that is still copied around
         //  rather than being reference-counted.
         enum { msg_t_size = 64 };
-        enum { max_vsm_size = msg_t_size - (8 + sizeof(iovec) + sizeof (metadata_t *) + 2) };
+        enum { max_vsm_size = msg_t_size - (sizeof(iovec) + sizeof (metadata_t *) + 2) };
 
         //  Shared message buffer. Message data are either allocated in one
         //  continuous block along with this structure - thus avoiding one
@@ -142,17 +142,14 @@ namespace zmq
             type_max = 104
         };
 
-        // the file descriptor where this message originated, needs to be 64bit due to alignment
-        int64_t file_desc;
-
-        //  Note that fields shared between different message types are not
+	//  Note that fields shared between different message types are not
         //  moved to the parent class (msg_t). This way we get tighter packing
         //  of the data. Shared fields can be accessed via 'base' member of
         //  the union.
         union {
             struct {
                 metadata_t *metadata;
-                unsigned char unused [msg_t_size - (8 + sizeof (metadata_t *) + 2)];
+                unsigned char unused [msg_t_size - (sizeof (metadata_t *) + 2)];
                 unsigned char type;
                 unsigned char flags;
             } base;
@@ -166,7 +163,7 @@ namespace zmq
             struct {
                 metadata_t *metadata;
                 content_t *content;
-                unsigned char unused [msg_t_size - (8 + sizeof (metadata_t *) + sizeof (content_t*) + 2)];
+                unsigned char unused [msg_t_size - (sizeof (metadata_t *) + sizeof (content_t*) + 2)];
                 unsigned char type;
                 unsigned char flags;
             } lmsg;
@@ -174,13 +171,13 @@ namespace zmq
                 metadata_t *metadata;
                 iovec iov;
                 unsigned char unused
-                    [msg_t_size - (8 + sizeof (metadata_t *) + sizeof (iovec) + 2)];
+                    [msg_t_size - (sizeof (metadata_t *) + sizeof (iovec) + 2)];
                 unsigned char type;
                 unsigned char flags;
             } cmsg;
             struct {
                 metadata_t *metadata;
-                unsigned char unused [msg_t_size - (8 + sizeof (metadata_t *) + 2)];
+                unsigned char unused [msg_t_size - (sizeof (metadata_t *) + 2)];
                 unsigned char type;
                 unsigned char flags;
             } delimiter;
