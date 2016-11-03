@@ -85,9 +85,8 @@ namespace zmq
         unsigned char flags ();
         void set_flags (unsigned char flags_);
         void reset_flags (unsigned char flags_);
-        int64_t fd ();
-        void set_fd (int64_t fd_);
-        metadata_t *metadata () const;
+
+            metadata_t *metadata () const;
         void set_metadata (metadata_t *metadata_);
         void reset_metadata ();
         bool is_identity () const;

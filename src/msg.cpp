@@ -62,13 +62,11 @@ int zmq::msg_t::init ()
     u.vsm.type = type_vsm;
     u.vsm.flags = 0;
     u.vsm.iov.iov_len = 0;
-    file_desc = -1;
     return 0;
 }
 
 int zmq::msg_t::init_size (size_t size_)
 {
-    file_desc = -1;
     if (size_ <= max_vsm_size) {
         u.vsm.metadata = NULL;
         u.vsm.type = type_vsm;
@@ -105,8 +103,6 @@ int zmq::msg_t::init_data (void *data_, size_t size_, msg_free_fn *ffn_,
     //  would occur once the data is accessed
     zmq_assert (data_ != NULL || size_ == 0);
 
-    file_desc = -1;
-
     //  Initialize constant message if there's no need to deallocate
     if (ffn_ == NULL) {
         u.cmsg.metadata = NULL;
@@ -141,8 +137,6 @@ int zmq::msg_t::init_data (void *data_, size_t size_, msg_free_fn *ffn_,
 int zmq::msg_t::init_iov(iovec *iov, int iovcnt, size_t size, msg_free_fn *ffn_, void *hint_)
 {
     zmq_assert(iov != NULL && iovcnt > 0 && ffn_ != NULL);
-
-    file_desc = -1;
 
     u.lmsg.metadata = NULL;
     u.lmsg.type = type_lmsg;
@@ -389,16 +383,6 @@ void zmq::msg_t::set_flags (unsigned char flags_)
 void zmq::msg_t::reset_flags (unsigned char flags_)
 {
     u.base.flags &= ~flags_;
-}
-
-int64_t zmq::msg_t::fd ()
-{
-    return file_desc;
-}
-
-void zmq::msg_t::set_fd (int64_t fd_)
-{
-    file_desc = fd_;
 }
 
 zmq::metadata_t *zmq::msg_t::metadata () const
