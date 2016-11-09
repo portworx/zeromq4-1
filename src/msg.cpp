@@ -266,8 +266,7 @@ void *zmq::msg_t::data ()
     case type_vsm:
         return u.vsm.data;
     case type_lmsg:
-        zmq_assert(u.lmsg.content->iovcnt == 1);
-        return u.lmsg.content->data_iov->iov_base;
+        return u.lmsg.content->data_iov[0].iov_base;
     case type_cmsg:
         return u.cmsg.iov.iov_base;
     default:
