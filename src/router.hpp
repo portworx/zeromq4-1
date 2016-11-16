@@ -71,8 +71,6 @@ namespace zmq
         int rollback ();
         blob_t get_credential () const;
 
-    private:
-
         //  Receive peer id and update lookup map
         bool identify_peer (pipe_t *pipe_);
 
@@ -133,6 +131,17 @@ namespace zmq
 
         router_t (const router_t&);
         const router_t &operator = (const router_t&);
+    };
+
+    class px_server : public router_t {
+    public:
+            px_server(zmq::ctx_t *parent_, uint32_t tid_, int sid_) :
+                router_t(parent_, tid_, sid_)
+            {
+            }
+	    int xsend (zmq::msg_t *msg_);
+            int xrecv (zmq::msg_t *msg_);
+            bool xhas_in ();
     };
 
 }

@@ -56,27 +56,37 @@ bool zmq::msg_t::check ()
      return u.base.type >= type_min && u.base.type <= type_max;
 }
 
-int zmq::msg_t::init ()
+inline void zmq::msg_t::init_vsm()
 {
     u.vsm.metadata = NULL;
     u.vsm.type = type_vsm;
     u.vsm.flags = 0;
     u.vsm.iov.iov_len = 0;
+    u.vsm.id.len = 0;
+}
+
+inline void zmq::msg_t::init_lsm()
+{
+    u.lmsg.metadata = NULL;
+    u.lmsg.type = type_lmsg;
+    u.lmsg.flags = 0;
+    u.lmsg.id.len = 0;
+}
+
+int zmq::msg_t::init ()
+{
+    init_vsm();
     return 0;
 }
 
 int zmq::msg_t::init_size (size_t size_)
 {
     if (size_ <= max_vsm_size) {
-        u.vsm.metadata = NULL;
-        u.vsm.type = type_vsm;
-        u.vsm.flags = 0;
+        init_vsm();
         u.vsm.iov.iov_len = (unsigned char) size_;
     }
     else {
-        u.lmsg.metadata = NULL;
-        u.lmsg.type = type_lmsg;
-        u.lmsg.flags = 0;
+        init_lsm();
         u.lmsg.content =
             (content_t*) malloc (sizeof (content_t) + sizeof(iovec) + size_);
         if (unlikely (!u.lmsg.content)) {
@@ -110,11 +120,10 @@ int zmq::msg_t::init_data (void *data_, size_t size_, msg_free_fn *ffn_,
         u.cmsg.flags = 0;
         u.cmsg.iov.iov_base = data_;
         u.cmsg.iov.iov_len = size_;
+        u.cmsg.id.len = 0;
     }
     else {
-        u.lmsg.metadata = NULL;
-        u.lmsg.type = type_lmsg;
-        u.lmsg.flags = 0;
+        init_lsm();
         u.lmsg.content = (content_t*) malloc (sizeof (content_t) + sizeof(iovec));
         if (!u.lmsg.content) {
             errno = ENOMEM;
@@ -138,9 +147,7 @@ int zmq::msg_t::init_iov(iovec *iov, int iovcnt, size_t size, msg_free_fn *ffn_,
 {
     zmq_assert(iov != NULL && iovcnt > 0 && ffn_ != NULL);
 
-    u.lmsg.metadata = NULL;
-    u.lmsg.type = type_lmsg;
-    u.lmsg.flags = 0;
+    init_lsm();
     u.lmsg.content = (content_t*) malloc (sizeof (content_t));
     if (!u.lmsg.content) {
         errno = ENOMEM;

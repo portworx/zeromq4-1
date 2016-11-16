@@ -1116,3 +1116,13 @@ int zmq_has (const char *capability)
     //  Whatever the application asked for, we don't have
     return false;
 }
+
+struct zmq_id zmq_msg_id(zmq_msg_t *msg)
+{
+    return ((zmq::msg_t *)msg)->get_id();
+}
+
+void zmq_msg_set_id(zmq_msg_t *msg, size_t len, void *data)
+{
+    ((zmq::msg_t *)msg)->set_id(len, data);
+}

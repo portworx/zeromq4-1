@@ -128,6 +128,9 @@ zmq::socket_base_t *zmq::socket_base_t::create (int type_, class ctx_t *parent_,
         case ZMQ_STREAM:
             s = new (std::nothrow) stream_t (parent_, tid_, sid_);
             break;
+        case ZMQ_PX_SERVER:
+            s = new (std::nothrow) px_server (parent_, tid_, sid_);
+            break;
         default:
             errno = EINVAL;
             return NULL;

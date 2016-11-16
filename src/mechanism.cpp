@@ -171,6 +171,7 @@ bool zmq::mechanism_t::check_socket_type (const std::string& type_) const
             return type_ == "REQ" || type_ == "DEALER";
         case ZMQ_DEALER:
             return type_ == "REP" || type_ == "DEALER" || type_ == "ROUTER";
+        case ZMQ_PX_SERVER:
         case ZMQ_ROUTER:
             return type_ == "REQ" || type_ == "DEALER" || type_ == "ROUTER";
         case ZMQ_PUSH:

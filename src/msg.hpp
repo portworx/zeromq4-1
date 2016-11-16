@@ -37,6 +37,9 @@
 #include "atomic_counter.hpp"
 #include "metadata.hpp"
 #include <sys/uio.h>
+#include "../include/zmq_id.h"
+#include "blob.hpp"
+#include "err.hpp"
 
 //  Signature for free function to deallocate the message content.
 //  Note that it has to be declared as "C" so that it is the same as
@@ -103,12 +106,29 @@ namespace zmq
         //  references drops to 0, the message is closed and false is returned.
         bool rm_refs (int refs_);
 
+	zmq_id get_id() { return u.base.id; };
+
+	void set_id(const blob_t &blob) {
+		size_t sz = blob.size();
+		zmq_assert(0 < sz && sz <= 5);
+		u.base.id.len = blob.size();
+		memcpy(u.base.id.val, blob.data(), 5);
+	}
+
+	void set_id(size_t len, void *data)
+	{
+		zmq_assert(0 < len && len <= 5);
+		u.base.id.len = len;
+		memcpy(u.base.id.val, data, 5);
+	}
     private:
+	void init_vsm();
+	void init_lsm();
 
         //  Size in bytes of the largest message that is still copied around
         //  rather than being reference-counted.
         enum { msg_t_size = 64 };
-        enum { max_vsm_size = msg_t_size - (sizeof(iovec) + sizeof (metadata_t *) + 2) };
+        enum { max_vsm_size = msg_t_size - (sizeof(iovec) + sizeof (metadata_t *) + 2 + 6) };
 
         //  Shared message buffer. Message data are either allocated in one
         //  continuous block along with this structure - thus avoiding one
@@ -142,14 +162,15 @@ namespace zmq
             type_max = 104
         };
 
-	//  Note that fields shared between different message types are not
+        //  Note that fields shared between different message types are not
         //  moved to the parent class (msg_t). This way we get tighter packing
         //  of the data. Shared fields can be accessed via 'base' member of
         //  the union.
         union {
             struct {
                 metadata_t *metadata;
-                unsigned char unused [msg_t_size - (sizeof (metadata_t *) + 2)];
+                unsigned char unused [msg_t_size - (sizeof (metadata_t *) + 2 + 6)];
+		zmq_id id;
                 unsigned char type;
                 unsigned char flags;
             } base;
@@ -157,13 +178,15 @@ namespace zmq
                 metadata_t *metadata;
                 iovec iov;
                 unsigned char data [max_vsm_size];
+		zmq_id id;
                 unsigned char type;
                 unsigned char flags;
             } vsm;
             struct {
                 metadata_t *metadata;
                 content_t *content;
-                unsigned char unused [msg_t_size - (sizeof (metadata_t *) + sizeof (content_t*) + 2)];
+                unsigned char unused [msg_t_size - (sizeof (metadata_t *) + sizeof (content_t*) + 2 + 6)];
+		zmq_id id;
                 unsigned char type;
                 unsigned char flags;
             } lmsg;
@@ -171,13 +194,15 @@ namespace zmq
                 metadata_t *metadata;
                 iovec iov;
                 unsigned char unused
-                    [msg_t_size - (sizeof (metadata_t *) + sizeof (iovec) + 2)];
+                    [msg_t_size - (sizeof (metadata_t *) + sizeof (iovec) + 2 + 6)];
+		zmq_id id;
                 unsigned char type;
                 unsigned char flags;
             } cmsg;
             struct {
                 metadata_t *metadata;
-                unsigned char unused [msg_t_size - (sizeof (metadata_t *) + 2)];
+                unsigned char unused [msg_t_size - (sizeof (metadata_t *) + 2 + 6)];
+		zmq_id id;
                 unsigned char type;
                 unsigned char flags;
             } delimiter;

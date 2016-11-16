@@ -477,3 +477,134 @@ bool zmq::router_t::identify_peer (pipe_t *pipe_)
 
     return true;
 }
+
+bool zmq::px_server::xhas_in ()
+{
+	//  If we are in the middle of reading the messages, there are
+	//  definitely more parts available.
+	if (more_in)
+		return true;
+
+	//  We may already have a message pre-fetched.
+	if (prefetched)
+		return true;
+
+	//  Try to read the next message.
+	//  The message, if read, is kept in the pre-fetch buffer.
+	pipe_t *pipe = NULL;
+	int rc = fq.recvpipe (&prefetched_msg, &pipe);
+
+	//  It's possible that we receive peer's identity. That happens
+	//  after reconnection. The current implementation assumes that
+	//  the peer always uses the same identity.
+	//  TODO: handle the situation when the peer changes its identity.
+	while (rc == 0 && prefetched_msg.is_identity ())
+		rc = fq.recvpipe (&prefetched_msg, &pipe);
+
+	if (rc != 0)
+		return false;
+
+	zmq_assert (pipe != NULL);
+
+	prefetched_msg.set_id(pipe->get_identity());
+
+	prefetched = true;
+
+	return true;
+}
+
+int zmq::px_server::xsend (msg_t *msg_)
+{
+    //  If this is the first part of the message it has the ID of the
+    //  peer to send the message to.
+    if (!more_out) {
+        zmq_assert (!current_out);
+
+        zmq_id id = msg_->get_id();
+        //  Find the pipe associated with the identity stored in the prefix.
+        //  If there's no such pipe just silently ignore the message, unless
+        //  router_mandatory is set.
+        blob_t identity (id.val, id.len);
+        outpipes_t::iterator it = outpipes.find (identity);
+
+        if (it != outpipes.end ()) {
+            current_out = it->second.pipe;
+            if (!current_out->check_write ()) {
+                it->second.active = false;
+                current_out = NULL;
+                if (mandatory) {
+                    errno = EAGAIN;
+                    return -1;
+                }
+            }
+        }
+        else
+        if (mandatory) {
+            errno = EHOSTUNREACH;
+            return -1;
+        }
+    }
+
+    //  Check whether this is the last part of the message.
+    more_out = msg_->flags () & msg_t::more ? true : false;
+
+    //  Push the message into the pipe. If there's no out pipe, just drop it.
+    if (current_out) {
+        bool ok = current_out->write (msg_);
+        if (unlikely (!ok)) {
+            // Message failed to send - we must close it ourselves.
+            int rc = msg_->close ();
+            errno_assert (rc == 0);
+            current_out = NULL;
+        } else {
+            if (!more_out) {
+                current_out->flush ();
+                current_out = NULL;
+            }
+        }
+    }
+    else {
+        int rc = msg_->close ();
+        errno_assert (rc == 0);
+    }
+
+    //  Detach the message from the data buffer.
+    int rc = msg_->init ();
+    errno_assert (rc == 0);
+
+    return 0;
+}
+
+int zmq::px_server::xrecv (msg_t *msg_)
+{
+	if (prefetched) {
+		int rc = msg_->move (prefetched_msg);
+		errno_assert (rc == 0);
+		prefetched = false;
+		more_in = msg_->flags () & msg_t::more ? true : false;
+		return 0;
+	}
+
+	pipe_t *pipe = NULL;
+	int rc = fq.recvpipe (msg_, &pipe);
+
+	//  It's possible that we receive peer's identity. That happens
+	//  after reconnection. The current implementation assumes that
+	//  the peer always uses the same identity.
+	while (rc == 0 && msg_->is_identity ())
+		rc = fq.recvpipe (msg_, &pipe);
+
+	if (rc != 0)
+		return -1;
+
+	zmq_assert (pipe != NULL);
+
+	//  If we are in the middle of reading a message, just return the next part.
+	if (more_in)
+		more_in = msg_->flags () & msg_t::more ? true : false;
+	else {
+		msg_->set_id(pipe->get_identity());
+	}
+
+	return 0;
+}

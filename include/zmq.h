@@ -47,6 +47,7 @@ extern "C" {
 #endif
 #include <stddef.h>
 #include <stdio.h>
+#include "zmq_id.h"
 #if defined _WIN32
 #include <winsock2.h>
 #endif
@@ -233,6 +234,8 @@ ZMQ_EXPORT int zmq_msg_more (zmq_msg_t *msg);
 ZMQ_EXPORT int zmq_msg_get (zmq_msg_t *msg, int property);
 ZMQ_EXPORT int zmq_msg_set (zmq_msg_t *msg, int property, int optval);
 ZMQ_EXPORT const char *zmq_msg_gets (zmq_msg_t *msg, const char *property);
+ZMQ_EXPORT struct zmq_id zmq_msg_id (zmq_msg_t *msg);
+ZMQ_EXPORT void zmq_msg_set_id(zmq_msg_t *msg, size_t len, void *data);
 
 
 /******************************************************************************/
@@ -252,6 +255,8 @@ ZMQ_EXPORT const char *zmq_msg_gets (zmq_msg_t *msg, const char *property);
 #define ZMQ_XPUB 9
 #define ZMQ_XSUB 10
 #define ZMQ_STREAM 11
+#define ZMQ_PX_SERVER 12
+#define ZMQ_PX_CLIENT 13
 
 /*  Deprecated aliases                                                        */
 #define ZMQ_XREQ ZMQ_DEALER
