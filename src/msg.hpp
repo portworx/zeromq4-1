@@ -81,6 +81,8 @@ namespace zmq
         int copy (msg_t &src_);
         void *data ();
         void *buf(int index);
+	void *push(size_t size_);
+	void *pull(size_t size_);
         iovec *iov();
         int num_bufs();
         size_t buf_size(int index);
@@ -141,6 +143,7 @@ namespace zmq
         {
             iovec *data_iov;
             size_t size;
+	    size_t hdr_size;
             msg_free_fn *ffn;
             void *hint;
             int iovcnt;
@@ -185,7 +188,7 @@ namespace zmq
             struct {
                 metadata_t *metadata;
                 content_t *content;
-                unsigned char unused [msg_t_size - (sizeof (metadata_t *) + sizeof (content_t*) + 2 + 6)];
+                unsigned char hdr [msg_t_size - (sizeof (metadata_t *) + sizeof (content_t*) + 2 + 6)];
 		zmq_id id;
                 unsigned char type;
                 unsigned char flags;
@@ -193,7 +196,7 @@ namespace zmq
             struct {
                 metadata_t *metadata;
                 iovec iov;
-                unsigned char unused
+                unsigned char hdr
                     [msg_t_size - (sizeof (metadata_t *) + sizeof (iovec) + 2 + 6)];
 		zmq_id id;
                 unsigned char type;
