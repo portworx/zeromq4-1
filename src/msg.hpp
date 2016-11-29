@@ -84,6 +84,7 @@ namespace zmq
 	void *push(size_t size_);
 	void *pull(size_t size_);
         iovec *iov();
+	int iovcnt();
         int num_bufs();
         size_t buf_size(int index);
         size_t size ();
@@ -126,6 +127,7 @@ namespace zmq
     private:
 	void init_vsm();
 	void init_lsm();
+	iovec *lmsg_iov(int index);
 
         //  Size in bytes of the largest message that is still copied around
         //  rather than being reference-counted.
@@ -143,7 +145,6 @@ namespace zmq
         {
             iovec *data_iov;
             size_t size;
-	    size_t hdr_size;
             msg_free_fn *ffn;
             void *hint;
             int iovcnt;
@@ -188,7 +189,9 @@ namespace zmq
             struct {
                 metadata_t *metadata;
                 content_t *content;
-                unsigned char hdr [msg_t_size - (sizeof (metadata_t *) + sizeof (content_t*) + 2 + 6)];
+		size_t hdr_size;
+                unsigned char hdr [msg_t_size - (sizeof (metadata_t *) +
+			sizeof (size_t) + sizeof (content_t*) + 2 + 6)];
 		zmq_id id;
                 unsigned char type;
                 unsigned char flags;

@@ -649,7 +649,7 @@ iovec *zmq_msg_iov (zmq_msg_t *msg_)
 
 int zmq_msg_iovcnt (zmq_msg_t *msg_)
 {
-    return ((zmq::msg_t*) msg_)->num_bufs ();
+    return ((zmq::msg_t*) msg_)->iovcnt ();
 }
 
 int zmq_msg_more (zmq_msg_t *msg_)
@@ -1125,4 +1125,14 @@ struct zmq_id zmq_msg_id(zmq_msg_t *msg)
 void zmq_msg_set_id(zmq_msg_t *msg, size_t len, void *data)
 {
     ((zmq::msg_t *)msg)->set_id(len, data);
+}
+
+void *zmq_msg_pull(zmq_msg_t *msg, size_t len)
+{
+    return ((zmq::msg_t *)msg)->pull(len);
+}
+
+void *zmq_msg_push(zmq_msg_t *msg, size_t len)
+{
+    return ((zmq::msg_t *)msg)->push(len);
 }
