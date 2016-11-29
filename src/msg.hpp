@@ -115,14 +115,14 @@ namespace zmq
 		size_t sz = blob.size();
 		zmq_assert(0 < sz && sz <= 5);
 		u.base.id.len = blob.size();
-		memcpy(u.base.id.val, blob.data(), 5);
+		memcpy(u.base.id.val, blob.data(), u.base.id.len);
 	}
 
 	void set_id(size_t len, void *data)
 	{
 		zmq_assert(0 < len && len <= 5);
 		u.base.id.len = len;
-		memcpy(u.base.id.val, data, 5);
+		memcpy(u.base.id.val, data, len);
 	}
     private:
 	void init_vsm();
