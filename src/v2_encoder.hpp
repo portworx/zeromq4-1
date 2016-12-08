@@ -30,30 +30,26 @@
 #ifndef __ZMQ_V2_ENCODER_HPP_INCLUDED__
 #define __ZMQ_V2_ENCODER_HPP_INCLUDED__
 
-#include "encoder.hpp"
+#include "i_encoder.hpp"
+#include "msg.hpp"
 
 namespace zmq
 {
     //  Encoder for 0MQ framing protocol. Converts messages into data stream.
 
-    class v2_encoder_t : public encoder_base_t <v2_encoder_t>
+    class v2_encoder_t : public i_encoder
     {
     public:
 
-        v2_encoder_t (size_t bufsize_);
+        v2_encoder_t ();
         virtual ~v2_encoder_t ();
 
+        virtual void encode(iovec_buf &buf);
+
+	    //  Load a new message into encoder.
+        virtual void load_msg (msg_t *msg_);
     private:
-
-        void size_ready ();
-        void message_ready ();
-
-        unsigned char tmpbuf [9];
-        int num_bufs;
-        int index;
-
-        v2_encoder_t (const v2_encoder_t&);
-        const v2_encoder_t &operator = (const v2_encoder_t&);
+        msg_t *msg;
     };
 }
 

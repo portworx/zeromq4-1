@@ -36,7 +36,6 @@
 #include "config.hpp"
 #include "atomic_counter.hpp"
 #include "metadata.hpp"
-#include <sys/uio.h>
 #include "../include/zmq_id.h"
 #include "blob.hpp"
 #include "err.hpp"
@@ -51,6 +50,7 @@ extern "C"
 
 namespace zmq
 {
+    struct iovec_buf;
 
     //  Note that this structure needs to be explicitly constructed
     //  (init functions) and destructed (close function).
@@ -83,6 +83,7 @@ namespace zmq
         void *buf(int index);
 	void *push(size_t size_);
 	void *pull(size_t size_);
+	void add_to_iovec_buf(iovec_buf &buf);
         iovec *iov();
 	int iovcnt();
         int num_bufs();
@@ -199,8 +200,10 @@ namespace zmq
             struct {
                 metadata_t *metadata;
                 iovec iov;
+		size_t hdr_size;
                 unsigned char hdr
-                    [msg_t_size - (sizeof (metadata_t *) + sizeof (iovec) + 2 + 6)];
+                    [msg_t_size - (sizeof (metadata_t *) + sizeof (iovec) +
+				sizeof(size_t) + 2 + 6)];
 		zmq_id id;
                 unsigned char type;
                 unsigned char flags;

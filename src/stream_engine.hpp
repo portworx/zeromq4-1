@@ -139,8 +139,8 @@ namespace zmq
         size_t insize;
         i_decoder *decoder;
 
-        unsigned char *outpos;
-        size_t outsize;
+        iovec_buf outbuf;
+
         i_encoder *encoder;
 
         //  Metadata to be attached to received messages. May be NULL.

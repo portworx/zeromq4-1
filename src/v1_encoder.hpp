@@ -30,25 +30,25 @@
 #ifndef __ZMQ_V1_ENCODER_HPP_INCLUDED__
 #define __ZMQ_V1_ENCODER_HPP_INCLUDED__
 
-#include "encoder.hpp"
+#include "i_encoder.hpp"
+#include "msg.hpp"
 
 namespace zmq
 {
     //  Encoder for ZMTP/1.0 protocol. Converts messages into data batches.
 
-    class v1_encoder_t : public encoder_base_t <v1_encoder_t>
+    class v1_encoder_t : public i_encoder
     {
     public:
 
-        v1_encoder_t (size_t bufsize_);
-        ~v1_encoder_t ();
+        v1_encoder_t () : msg(NULL) {};
+
+        void load_msg(msg_t *msg_) { msg = msg_; };
+
+        virtual void encode(iovec_buf &buf);
 
     private:
-
-        void size_ready ();
-        void message_ready ();
-
-        unsigned char tmpbuf [10];
+        msg_t *msg;
 
         v1_encoder_t (const v1_encoder_t&);
         const v1_encoder_t &operator = (const v1_encoder_t&);

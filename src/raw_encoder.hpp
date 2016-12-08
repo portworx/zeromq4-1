@@ -50,16 +50,18 @@ namespace zmq
 
     //  Encoder for 0MQ framing protocol. Converts messages into data batches.
 
-    class raw_encoder_t : public encoder_base_t <raw_encoder_t>
+    class raw_encoder_t : public i_encoder
     {
     public:
 
-        raw_encoder_t (size_t bufsize_);
-        ~raw_encoder_t ();
+        raw_encoder_t();
+
+        virtual void encode(iovec_buf &buf);
+	virtual void load_msg(msg_t *msg_);
 
     private:
 
-        void raw_message_ready ();
+	msg_t *msg;
 
         raw_encoder_t (const raw_encoder_t&);
         const raw_encoder_t &operator = (const raw_encoder_t&);

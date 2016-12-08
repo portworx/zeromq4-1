@@ -43,6 +43,7 @@
 #include "likely.hpp"
 #include "metadata.hpp"
 #include "err.hpp"
+#include "i_encoder.hpp"
 
 //  Check whether the sizes of public representation of the message (zmq_msg_t)
 //  and private representation of the message (zmq::msg_t) match.
@@ -112,6 +113,7 @@ int zmq::msg_t::init_data (void *data_, size_t size_, msg_free_fn *ffn_,
         u.cmsg.metadata = NULL;
         u.cmsg.type = type_cmsg;
         u.cmsg.flags = 0;
+	u.cmsg.hdr_size = 0;
         u.cmsg.iov.iov_base = data_;
         u.cmsg.iov.iov_len = size_;
         u.cmsg.id.len = 0;
@@ -289,7 +291,7 @@ void *zmq::msg_t::buf(int index)
 	    return u.vsm.data + max_vsm_size - u.vsm.iov.iov_len;
         case type_lmsg:
         {
-            size_t hdr_size = u.lmsg.hdr_size;
+  	    size_t hdr_size = u.lmsg.hdr_size;
             int off = hdr_size ? 1 : 0;
             zmq_assert(index - off < u.lmsg.content->iovcnt);
             if (!index) {
@@ -300,8 +302,16 @@ void *zmq::msg_t::buf(int index)
             }
         }
         case type_cmsg:
-            zmq_assert(index == 0);
-            return u.cmsg.iov.iov_base;
+	{
+		size_t hdr_size = u.cmsg.hdr_size;
+		zmq_assert(index == 0 || index == 1);
+		if (!index) {
+			return hdr_size ? u.cmsg.hdr + sizeof(u.cmsg.hdr) -
+				  hdr_size : u.cmsg.iov.iov_base;
+		} else {
+			return u.cmsg.iov.iov_base;
+		}
+	}
         default:
             zmq_assert (false);
             return NULL;
@@ -330,8 +340,16 @@ size_t zmq::msg_t::buf_size(int index)
 		}
 	}
         case type_cmsg:
-            zmq_assert(index == 0);
-            return u.cmsg.iov.iov_len;
+	{
+		size_t hdr_size = u.cmsg.hdr_size;
+		int off = hdr_size ? 1 : 0;
+		zmq_assert(index - off < 1);
+		if (!index) {
+			return hdr_size ? u.cmsg.hdr_size : u.cmsg.iov.iov_len;
+		} else {
+			return u.cmsg.iov.iov_len;
+		}
+	}
         default:
             zmq_assert (false);
             return 0;
@@ -358,8 +376,15 @@ int zmq::msg_t::num_bufs()
 
 int zmq::msg_t::iovcnt()
 {
-	zmq_assert(u.base.type == type_lmsg);
-	return u.lmsg.content->iovcnt;
+	if (u.base.type == type_lmsg)
+	    return u.lmsg.content->iovcnt;
+        else if (u.base.type == type_vsm)
+            return 0;
+	else if (u.base.type == type_cmsg) {
+	     return 1;
+	} else {
+	     return 0;
+	}
 }
 
 iovec *zmq::msg_t::iov()
@@ -526,6 +551,10 @@ void *zmq::msg_t::push(size_t size_)
 	return u.lmsg.hdr_size ?
 	   u.lmsg.hdr + sizeof(u.lmsg.hdr) - u.lmsg.hdr_size :
 	   u.lmsg.content->data_iov[0].iov_base;
+    } else if (u.base.type == type_cmsg) {
+	    zmq_assert(size_ + u.cmsg.hdr_size <= sizeof(u.lmsg.hdr));
+	    u.cmsg.hdr_size += size_;
+	    return u.cmsg.hdr + sizeof(u.cmsg.hdr) - u.cmsg.hdr_size;
     } else {
         zmq_assert(0);
         return NULL;
@@ -564,4 +593,34 @@ void *zmq::msg_t::pull(size_t size_)
         zmq_assert(0);
         return NULL;
     }
+}
+
+void zmq::msg_t::add_to_iovec_buf(zmq::iovec_buf &buf)
+{
+	if (u.base.type == type_lmsg) {
+		if (u.lmsg.hdr_size) {
+			iovec i = { u.lmsg.hdr + sizeof(u.lmsg.hdr) -
+					    u.lmsg.hdr_size, u.lmsg.hdr_size };
+			buf.iov.push_back(i);
+		}
+		std::copy(u.lmsg.content->data_iov,
+			  u.lmsg.content->data_iov + u.lmsg.content->iovcnt,
+				std::back_inserter(buf.iov));
+		buf.size += u.lmsg.content->size + u.lmsg.hdr_size;
+	} else if (u.base.type == type_vsm) {
+		iovec i = { u.vsm.data + sizeof(u.vsm.data) - u.vsm.iov.iov_len,
+			    u.vsm.iov.iov_len};
+		buf.iov.push_back(i);
+		buf.size += u.vsm.iov.iov_len;
+	} else if (u.base.type == type_cmsg) {
+		if (u.cmsg.hdr_size) {
+			iovec i = { u.cmsg.hdr + sizeof(u.cmsg.hdr) -
+					u.cmsg.hdr_size, u.cmsg.hdr_size };
+			buf.iov.push_back(i);
+		}
+		buf.iov.push_back(u.cmsg.iov);
+		buf.size += u.cmsg.hdr_size + u.cmsg.iov.iov_len;
+	} else {
+		assert(0);
+	}
 }

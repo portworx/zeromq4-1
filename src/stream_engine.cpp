@@ -77,8 +77,6 @@ zmq::stream_engine_t::stream_engine_t (fd_t fd_, const options_t &options_,
     inpos (NULL),
     insize (0),
     decoder (NULL),
-    outpos (NULL),
-    outsize (0),
     encoder (NULL),
     metadata (NULL),
     handshaking (true),
@@ -192,7 +190,7 @@ void zmq::stream_engine_t::plug (io_thread_t *io_thread_,
 
     if (options.raw_sock) {
         // no handshaking for raw sock, instantiate raw encoder and decoders
-        encoder = new (std::nothrow) raw_encoder_t (out_batch_size);
+        encoder = new(std::nothrow) raw_encoder_t();
         alloc_assert (encoder);
 
         decoder = new (std::nothrow) raw_decoder_t (in_batch_size);
@@ -227,11 +225,12 @@ void zmq::stream_engine_t::plug (io_thread_t *io_thread_,
 
         //  Send the 'length' and 'flags' fields of the identity message.
         //  The 'length' field is encoded in the long format.
-        outpos = greeting_send;
-        outpos [outsize++] = 0xff;
-        put_uint64 (&outpos [outsize], options.identity_size + 1);
-        outsize += 8;
-        outpos [outsize++] = 0x7f;
+        iovec iov = { greeting_send, 10 };
+	outbuf.iov.push_back(iov);
+	outbuf.size += 10;
+	greeting_send[0] = 0xff;
+        put_uint64 (&greeting_send[1], options.identity_size + 1);
+	greeting_send[9] = 0x7f;
     }
 
     set_pollin (handle);
@@ -344,7 +343,7 @@ void zmq::stream_engine_t::out_event ()
     zmq_assert (!io_error);
 
     //  If write buffer is empty, try to read new data from the encoder.
-    if (!outsize) {
+    if (!outbuf.size) {
 
         //  Even when we stop polling as soon as there is no
         //  data to send, the poller may invoke out_event one
@@ -354,23 +353,26 @@ void zmq::stream_engine_t::out_event ()
             return;
         }
 
-        outpos = NULL;
-        outsize = encoder->encode (&outpos, 0);
+	outbuf.reset();
 
-        while (outsize < out_batch_size) {
-            if ((this->*next_msg) (&tx_msg) == -1)
+        while (outbuf.size < out_batch_size &&
+                (outbuf.msgs.size() < outbuf.msgs.capacity() ||
+                        outbuf.msg_allocated)) {
+	    if (!outbuf.msg_allocated) {
+		outbuf.msgs.resize(outbuf.msgs.size() + 1);
+		outbuf.msgs.back().init();
+		outbuf.msg_allocated = true;
+	    }
+
+            if ((this->*next_msg) (&outbuf.msgs.back()) == -1)
                 break;
-            encoder->load_msg (&tx_msg);
-            unsigned char *bufptr = outpos + outsize;
-            size_t n = encoder->encode (&bufptr, out_batch_size - outsize);
-            zmq_assert (n > 0);
-            if (outpos == NULL)
-                outpos = bufptr;
-            outsize += n;
+	    outbuf.msg_allocated = false;
+            encoder->load_msg (&outbuf.msgs.back());
+	    encoder->encode(outbuf);
         }
 
         //  If there is no data to send, stop polling for output.
-        if (outsize == 0) {
+        if (outbuf.size == 0) {
             output_stopped = true;
             reset_pollout (handle);
             return;
@@ -382,23 +384,25 @@ void zmq::stream_engine_t::out_event ()
     //  arbitrarily large. However, we assume that underlying TCP layer has
     //  limited transmission buffer and thus the actual number of bytes
     //  written should be reasonably modest.
-    const int nbytes = tcp_write (s, outpos, outsize);
+    const int nbytes = writev(s, &outbuf.iov[outbuf.curr], outbuf.count());
 
     //  IO error has occurred. We stop waiting for output events.
     //  The engine is not terminated until we detect input error;
     //  this is necessary to prevent losing incoming messages.
     if (nbytes == -1) {
-        reset_pollout (handle);
-        return;
+         if (errno != EAGAIN) {
+	     printf("%s: errno %d(%s)\n", __func__, errno, strerror(errno));
+	     reset_pollout (handle);
+         }
+         return;
     }
 
-    outpos += nbytes;
-    outsize -= nbytes;
+    outbuf.pull(nbytes);
 
     //  If we are still handshaking and there are no data
     //  to send, stop polling for output.
     if (unlikely (handshaking))
-        if (outsize == 0)
+        if (outbuf.size == 0)
             reset_pollout (handle);
 }
 
@@ -503,44 +507,58 @@ bool zmq::stream_engine_t::handshake ()
 
         //  The peer is using versioned protocol.
         //  Send the major version number.
-        if (outpos + outsize == greeting_send + signature_size) {
-            if (outsize == 0)
+	if (outbuf.size == 0 && outbuf.curr == 1) {
+		outbuf.curr = 0;
+		outbuf.iov[0].iov_base = (unsigned char *)outbuf.iov[0].iov_base +
+			outbuf.iov[0].iov_len;
+		outbuf.iov[0].iov_len = 0;
+	}
+	iovec &iov = outbuf.iov[outbuf.curr];
+        if ((unsigned char *)iov.iov_base + iov.iov_len == greeting_send + signature_size) {
+            if (outbuf.size == 0)
                 set_pollout (handle);
-            outpos [outsize++] = 3;     //  Major version number
+	    ((unsigned char *)iov.iov_base)[iov.iov_len++] = 3; //  Major version number
+	    ++outbuf.size;
         }
 
         if (greeting_bytes_read > signature_size) {
-            if (outpos + outsize == greeting_send + signature_size + 1) {
-                if (outsize == 0)
+            if ((unsigned char *)iov.iov_base + iov.iov_len == greeting_send + signature_size + 1) {
+                if (outbuf.size == 0)
                     set_pollout (handle);
 
                 //  Use ZMTP/2.0 to talk to older peers.
                 if (greeting_recv [10] == ZMTP_1_0
-                ||  greeting_recv [10] == ZMTP_2_0)
-                    outpos [outsize++] = options.type;
+                ||  greeting_recv [10] == ZMTP_2_0) {
+			((unsigned char *)iov.iov_base)[iov.iov_len++] = options.type;
+			++outbuf.size;
+		}
                 else {
-                    outpos [outsize++] = 0; //  Minor version number
-                    memset (outpos + outsize, 0, 20);
+		    ((unsigned char *)iov.iov_base)[iov.iov_len++] = 0; //  Minor version number
+		    ++outbuf.size;
+                    memset ((unsigned char *)iov.iov_base + iov.iov_len, 0, 20);
 
                     zmq_assert (options.mechanism == ZMQ_NULL
                             ||  options.mechanism == ZMQ_PLAIN
                             ||  options.mechanism == ZMQ_CURVE
                             ||  options.mechanism == ZMQ_GSSAPI);
 
+		    unsigned char *p = (unsigned char *)iov.iov_base + iov.iov_len;
                     if (options.mechanism == ZMQ_NULL)
-                        memcpy (outpos + outsize, "NULL", 4);
+                        memcpy (p, "NULL", 4);
                     else
                     if (options.mechanism == ZMQ_PLAIN)
-                        memcpy (outpos + outsize, "PLAIN", 5);
+                        memcpy (p, "PLAIN", 5);
                     else
                     if (options.mechanism == ZMQ_GSSAPI)
-                        memcpy (outpos + outsize, "GSSAPI", 6);
+                        memcpy (p, "GSSAPI", 6);
                     else
                     if (options.mechanism == ZMQ_CURVE)
-                        memcpy (outpos + outsize, "CURVE", 5);
-                    outsize += 20;
-                    memset (outpos + outsize, 0, 32);
-                    outsize += 32;
+                        memcpy (p, "CURVE", 5);
+		    iov.iov_len += 20;
+		    outbuf.size += 20;
+                    memset ((unsigned char *)iov.iov_base + iov.iov_len, 0, 32);
+		    iov.iov_len += 32;
+		    outbuf.size += 32;
                     greeting_size = v3_greeting_size;
                 }
             }
@@ -559,7 +577,7 @@ bool zmq::stream_engine_t::handshake ()
            return false;
         }
 
-        encoder = new (std::nothrow) v1_encoder_t (out_batch_size);
+        encoder = new (std::nothrow) v1_encoder_t ();
         alloc_assert (encoder);
 
         decoder = new (std::nothrow) v1_decoder_t (in_batch_size, options.maxmsgsize);
@@ -570,7 +588,6 @@ bool zmq::stream_engine_t::handshake ()
         //  skip the message header, we simply throw that
         //  header data away.
         const size_t header_size = options.identity_size + 1 >= 255 ? 10 : 2;
-        unsigned char tmp [10], *bufferp = tmp;
 
         //  Prepare the identity message and load it into encoder.
         //  Then consume bytes we have already sent to the peer.
@@ -578,8 +595,8 @@ bool zmq::stream_engine_t::handshake ()
         zmq_assert (rc == 0);
         memcpy (tx_msg.data (), options.identity, options.identity_size);
         encoder->load_msg (&tx_msg);
-        size_t buffer_size = encoder->encode (&bufferp, header_size);
-        zmq_assert (buffer_size == header_size);
+        encoder->encode (outbuf);
+        zmq_assert (outbuf.size == header_size);
 
         //  Make sure the decoder sees the data we have already received.
         inpos = greeting_recv;
@@ -606,8 +623,7 @@ bool zmq::stream_engine_t::handshake ()
            return false;
         }
 
-        encoder = new (std::nothrow) v1_encoder_t (
-            out_batch_size);
+        encoder = new (std::nothrow) v1_encoder_t ();
         alloc_assert (encoder);
 
         decoder = new (std::nothrow) v1_decoder_t (
@@ -622,7 +638,7 @@ bool zmq::stream_engine_t::handshake ()
            return false;
         }
 
-        encoder = new (std::nothrow) v2_encoder_t (out_batch_size);
+        encoder = new (std::nothrow) v2_encoder_t ();
         alloc_assert (encoder);
 
         decoder = new (std::nothrow) v2_decoder_t (
@@ -630,7 +646,7 @@ bool zmq::stream_engine_t::handshake ()
         alloc_assert (decoder);
     }
     else {
-        encoder = new (std::nothrow) v2_encoder_t (out_batch_size);
+        encoder = new (std::nothrow) v2_encoder_t ();
         alloc_assert (encoder);
 
         decoder = new (std::nothrow) v2_decoder_t (
@@ -687,7 +703,7 @@ bool zmq::stream_engine_t::handshake ()
     }
 
     // Start polling for output if necessary.
-    if (outsize == 0)
+    if (outbuf.size == 0)
         set_pollout (handle);
 
     //  Handshaking was successful.
@@ -957,4 +973,41 @@ void zmq::stream_engine_t::timer_event (int id_)
 
     //  handshake timer expired before handshake completed, so engine fails
     error (timeout_error);
+}
+
+void zmq::iovec_buf::pull(size_t num_bytes)
+{
+    	zmq_assert(num_bytes <= size);
+	size_t remain = num_bytes;
+	while (remain) {
+		iovec &iov_curr = iov[curr];
+		if (remain < iov_curr.iov_len) {
+			iov_curr.iov_len -= remain;
+			iov_curr.iov_base = (char *)iov_curr.iov_base + remain;
+			size -= remain;
+			return;
+		} else {
+			zmq_assert(remain >= iov_curr.iov_len);
+			remain -= iov_curr.iov_len;
+			size -= iov_curr.iov_len;
+			++curr;
+		}
+	}
+}
+
+zmq::iovec_buf::iovec_buf() : curr(0), msg_allocated(false), size(0)
+{
+    msgs.reserve(max_msgs);
+}
+
+void zmq::iovec_buf::reset()
+{
+	iov.clear();
+	for (std::vector<zmq::msg_t>::iterator it = msgs.begin();
+	     it != msgs.end(); ++it)
+		it->close();
+	msgs.clear();
+	curr = 0;
+	size = 0;
+	msg_allocated = false;
 }
