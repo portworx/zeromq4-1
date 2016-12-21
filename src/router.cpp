@@ -606,3 +606,25 @@ int zmq::px_server::xrecv (msg_t *msg_)
 
 	return 0;
 }
+
+int
+zmq::px_server::xsetsockopt(int option_, const void *optval_, size_t optvallen_)
+{
+    switch (option_) {
+    case ZMQ_RECV_CALLBACK:
+    {
+        if (optvallen_ != sizeof(zmq_recv_callback_arg)) {
+            errno = EINVAL;
+            return -1;
+        }
+        const zmq_recv_callback_arg *arg =
+                reinterpret_cast<const zmq_recv_callback_arg *>(optval_);
+        options.recv_callback = arg->func;
+        options.recv_callback_arg = arg->ctx;
+        return 0;
+    }
+    default:
+        return router_t::xsetsockopt(option_, optval_, optvallen_);
+    }
+}
+

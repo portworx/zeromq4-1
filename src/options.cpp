@@ -66,7 +66,9 @@ zmq::options_t::options_t () :
     gss_plaintext (false),
     socket_id (0),
     conflate (false),
-    handshake_ivl (30000)
+    handshake_ivl (30000),
+    recv_callback(NULL),
+    recv_callback_arg(NULL)
 {
     memset (curve_public_key, 0, CURVE_KEYSIZE);
     memset (curve_secret_key, 0, CURVE_KEYSIZE);

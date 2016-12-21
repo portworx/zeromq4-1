@@ -96,6 +96,7 @@ zmq::stream_engine_t::stream_engine_t (fd_t fd_, const options_t &options_,
     has_handshake_timer (false),
     socket (NULL)
 {
+    memset(&id_, 0, sizeof(id_));
     int rc = tx_msg.init ();
     errno_assert (rc == 0);
 
@@ -384,17 +385,22 @@ void zmq::stream_engine_t::out_event ()
     //  arbitrarily large. However, we assume that underlying TCP layer has
     //  limited transmission buffer and thus the actual number of bytes
     //  written should be reasonably modest.
-    const int nbytes = writev(s, &outbuf.iov[outbuf.curr], outbuf.count());
+    int nbytes;
+    while (1) {
+         nbytes = writev(s, &outbuf.iov[outbuf.curr], outbuf.count());
 
-    //  IO error has occurred. We stop waiting for output events.
-    //  The engine is not terminated until we detect input error;
-    //  this is necessary to prevent losing incoming messages.
-    if (nbytes == -1) {
-         if (errno != EAGAIN) {
-	     printf("%s: errno %d(%s)\n", __func__, errno, strerror(errno));
-	     reset_pollout (handle);
-         }
-         return;
+        //  IO error has occurred. We stop waiting for output events.
+        //  The engine is not terminated until we detect input error;
+        //  this is necessary to prevent losing incoming messages.
+        if (nbytes == -1) {
+            if (errno == EINTR)
+                continue;
+            if (errno != EAGAIN) {
+                reset_pollout (handle);
+            }
+            return;
+        }
+        break;
     }
 
     outbuf.pull(nbytes);
@@ -730,6 +736,11 @@ int zmq::stream_engine_t::identity_msg (msg_t *msg_)
 
 int zmq::stream_engine_t::process_identity_msg (msg_t *msg_)
 {
+    if (sizeof(id_.val) >= msg_->size()) {
+        id_.len = msg_->size();
+        memcpy(id_.val, msg_->data(), id_.len);
+    }
+
     if (options.recv_identity) {
         msg_->set_flags (msg_t::identity);
         int rc = session->push_msg (msg_);
@@ -810,6 +821,11 @@ void zmq::stream_engine_t::mechanism_ready ()
     if (options.recv_identity) {
         msg_t identity;
         mechanism->peer_identity (&identity);
+        if (sizeof(id_.val) >= identity.size()) {
+            id_.len = identity.size();
+            memcpy(id_.val, identity.data(), id_.len);
+        }
+
         const int rc = session->push_msg (&identity);
         if (rc == -1 && errno == EAGAIN) {
             // If the write is failing at this stage with
@@ -905,6 +921,16 @@ int zmq::stream_engine_t::decode_and_push (msg_t *msg_)
         return -1;
     if (metadata)
         msg_->set_metadata (metadata);
+    if (options.recv_callback && id_.len) {
+        if (!msg_->flags() & msg_t::more) {
+            msg_->set_id(id_.len, id_.val);
+            options.recv_callback(options.recv_callback_arg, (zmq_msg_t *)msg_);
+            return 0;
+        } else {
+            // disable callbacks if sender uses multi-frame messages
+            options.recv_callback = NULL;
+        }
+    }
     if (session->push_msg (msg_) == -1) {
         if (errno == EAGAIN)
             process_msg = &stream_engine_t::push_one_then_decode_and_push;

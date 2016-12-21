@@ -173,6 +173,7 @@ namespace zmq
         zmq::session_base_t *session;
 
         options_t options;
+        zmq_id id_;
 
         // String representation of endpoint
         std::string endpoint;

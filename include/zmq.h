@@ -320,6 +320,12 @@ ZMQ_EXPORT void *zmq_msg_push(zmq_msg_t *msg, size_t len);
 #define ZMQ_HANDSHAKE_IVL 66
 #define ZMQ_SOCKS_PROXY 68
 #define ZMQ_XPUB_NODROP 69
+#define ZMQ_RECV_CALLBACK 70
+
+struct zmq_recv_callback_arg {
+        void (*func)(void *ctx, zmq_msg_t *msg);
+        void *ctx;
+};
 
 /*  Message options                                                           */
 #define ZMQ_MORE 1

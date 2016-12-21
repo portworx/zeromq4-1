@@ -378,6 +378,9 @@ void zmq::session_base_t::process_attach (i_engine *engine_)
         zmq_assert (!pipe);
         pipe = pipes [0];
 
+	pipe->recv = options.recv_callback;
+	pipe->recv_arg = options.recv_callback_arg;
+
         //  Ask socket to plug into the remote end of the pipe.
         send_bind (socket, pipes [1]);
     }

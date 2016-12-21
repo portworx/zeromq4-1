@@ -232,18 +232,24 @@ int zmq::tcp_read (fd_t s_, void *data_, size_t size_)
 
 #else
 
-    const ssize_t rc = recv (s_, data_, size_, 0);
+    ssize_t rc;
+    while (1) {
+        rc = recv (s_, data_, size_, 0);
 
-    //  Several errors are OK. When speculative read is being done we may not
-    //  be able to read a single byte from the socket. Also, SIGSTOP issued
-    //  by a debugging tool can result in EINTR error.
-    if (rc == -1) {
-        errno_assert (errno != EBADF
-                   && errno != EFAULT
-                   && errno != ENOMEM
-                   && errno != ENOTSOCK);
-        if (errno == EWOULDBLOCK || errno == EINTR)
-            errno = EAGAIN;
+        //  Several errors are OK. When speculative read is being done we may not
+        //  be able to read a single byte from the socket. Also, SIGSTOP issued
+        //  by a debugging tool can result in EINTR error.
+        if (rc == -1) {
+            if (errno == EINTR)
+                continue;
+            errno_assert (errno != EBADF
+                          && errno != EFAULT
+                          && errno != ENOMEM
+                          && errno != ENOTSOCK);
+            if (errno == EWOULDBLOCK)
+                errno = EAGAIN;
+        }
+        break;
     }
 
     return static_cast <int> (rc);

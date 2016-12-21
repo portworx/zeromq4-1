@@ -80,6 +80,8 @@ namespace zmq
             int hwms_ [2], bool conflate_ [2]);
 
     public:
+        void (*recv)(void *arg, zmq_msg_t *msg_);
+        void *recv_arg;
 
         //  Specifies the object to send events to.
         void set_event_sink (i_pipe_events *sink_);

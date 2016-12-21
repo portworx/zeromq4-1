@@ -142,6 +142,8 @@ namespace zmq
 	    int xsend (zmq::msg_t *msg_);
             int xrecv (zmq::msg_t *msg_);
             bool xhas_in ();
+            int xsetsockopt (int option_, const void *optval_,
+                    size_t optvallen_);
     };
 
 }
