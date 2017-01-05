@@ -602,9 +602,7 @@ int zmq::px_server::xrecv (msg_t *msg_)
 	//  If we are in the middle of reading a message, just return the next part.
 	if (more_in)
 		more_in = msg_->flags () & msg_t::more ? true : false;
-	else {
-		msg_->set_id(pipe->get_identity());
-	}
+        msg_->set_id(pipe->get_identity());
 
 	return 0;
 }
