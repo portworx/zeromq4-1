@@ -922,7 +922,7 @@ int zmq::stream_engine_t::decode_and_push (msg_t *msg_)
     if (metadata)
         msg_->set_metadata (metadata);
     if (options.recv_callback && id_.len) {
-        if (!msg_->flags() & msg_t::more) {
+        if (!(msg_->flags() & msg_t::more)) {
             msg_->set_id(id_.len, id_.val);
             options.recv_callback(options.recv_callback_arg, (zmq_msg_t *)msg_);
             return 0;
