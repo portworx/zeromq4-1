@@ -137,7 +137,8 @@ namespace zmq
 
         unsigned char *inpos;
         size_t insize;
-        i_decoder *decoder;
+	i_decoder *decoder;
+	void *decoder_ctx;
 
         iovec_buf outbuf;
 

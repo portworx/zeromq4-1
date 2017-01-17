@@ -68,7 +68,8 @@ zmq::options_t::options_t () :
     conflate (false),
     handshake_ivl (30000),
     recv_callback(NULL),
-    recv_callback_arg(NULL)
+    recv_callback_arg(NULL),
+    has_decoder_ops(false)
 {
     memset (curve_public_key, 0, CURVE_KEYSIZE);
     memset (curve_secret_key, 0, CURVE_KEYSIZE);

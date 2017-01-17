@@ -611,8 +611,7 @@ int
 zmq::px_server::xsetsockopt(int option_, const void *optval_, size_t optvallen_)
 {
     switch (option_) {
-    case ZMQ_RECV_CALLBACK:
-    {
+    case ZMQ_RECV_CALLBACK: {
         if (optvallen_ != sizeof(zmq_recv_callback_arg)) {
             errno = EINVAL;
             return -1;
@@ -621,6 +620,17 @@ zmq::px_server::xsetsockopt(int option_, const void *optval_, size_t optvallen_)
                 reinterpret_cast<const zmq_recv_callback_arg *>(optval_);
         options.recv_callback = arg->func;
         options.recv_callback_arg = arg->ctx;
+        return 0;
+    }
+    case ZMQ_DECODER_OPS:  {
+        if (optvallen_ != sizeof(decoder_ops)) {
+            errno = EINVAL;
+            return -1;
+        }
+
+        options.dec_ops = *reinterpret_cast<const decoder_ops *>(optval_);
+        options.has_decoder_ops = true;
+
         return 0;
     }
     default:

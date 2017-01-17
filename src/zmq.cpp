@@ -74,6 +74,7 @@ struct iovec {
 #include "msg.hpp"
 #include "fd.hpp"
 #include "metadata.hpp"
+#include "v2_protocol.hpp"
 
 #if !defined ZMQ_HAVE_WINDOWS
 #include <unistd.h>
@@ -671,11 +672,22 @@ int zmq_msg_get (zmq_msg_t *msg_, int property_)
     }
 }
 
-int zmq_msg_set (zmq_msg_t *, int, int)
+int zmq_msg_set (zmq_msg_t *msg_, int property, int optval)
 {
-    //  No properties supported at present
-    errno = EINVAL;
-    return -1;
+    switch (property) {
+    case ZMQ_FLAGS_V2: {
+        unsigned char flags = 0;
+        if (optval & zmq::v2_protocol_t::more_flag)
+            flags |= zmq::msg_t::more;
+        if (optval & zmq::v2_protocol_t::command_flag)
+            flags |= zmq::msg_t::command;
+        ((zmq::msg_t *)msg_)->set_flags(flags);
+        return 0;
+    }
+    default:
+        errno = EINVAL;
+        return -1;
+    }
 }
 
 

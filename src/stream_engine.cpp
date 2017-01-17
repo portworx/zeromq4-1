@@ -77,6 +77,7 @@ zmq::stream_engine_t::stream_engine_t (fd_t fd_, const options_t &options_,
     inpos (NULL),
     insize (0),
     decoder (NULL),
+    decoder_ctx (NULL),
     encoder (NULL),
     metadata (NULL),
     handshaking (true),
@@ -168,7 +169,11 @@ zmq::stream_engine_t::~stream_engine_t ()
             delete metadata;
 
     delete encoder;
-    delete decoder;
+    if (!options.has_decoder_ops) {
+	    delete decoder;
+    } else {
+	    options.dec_ops.destroy(decoder_ctx);
+    }
     delete mechanism;
 }
 
@@ -276,7 +281,7 @@ void zmq::stream_engine_t::in_event ()
         if (!handshake ())
             return;
 
-    zmq_assert (decoder);
+    zmq_assert (decoder || (options.has_decoder_ops && decoder_ctx));
 
     //  If there has been an I/O error, stop polling.
     if (input_stopped) {
@@ -293,7 +298,11 @@ void zmq::stream_engine_t::in_event ()
         //  the underlying TCP layer has fixed buffer size and thus the
         //  number of bytes read will be always limited.
         size_t bufsize = 0;
-        decoder->get_buffer (&inpos, &bufsize);
+	if (!options.has_decoder_ops) {
+		decoder->get_buffer (&inpos, &bufsize);
+	} else {
+		options.dec_ops.get_buffer(decoder_ctx, &inpos, &bufsize);
+	}
 
         const int rc = tcp_read (s, inpos, bufsize);
         if (rc == 0) {
@@ -314,13 +323,20 @@ void zmq::stream_engine_t::in_event ()
     size_t processed = 0;
 
     while (insize > 0) {
-        rc = decoder->decode (inpos, insize, processed);
+	if (!options.has_decoder_ops) {
+		rc = decoder->decode (inpos, insize, processed);
+	} else {
+		rc = options.dec_ops.decode(decoder_ctx, inpos, insize,
+					    &processed);
+	}
         zmq_assert (processed <= insize);
         inpos += processed;
         insize -= processed;
         if (rc == 0 || rc == -1)
             break;
-        rc = (this->*process_msg) (decoder->msg ());
+	msg_t *msg = !options.has_decoder_ops ?
+		decoder->msg() : (msg_t *)options.dec_ops.msg(decoder_ctx);
+        rc = (this->*process_msg) (msg);
         if (rc == -1)
             break;
     }
@@ -435,7 +451,9 @@ void zmq::stream_engine_t::restart_input ()
     zmq_assert (session != NULL);
     zmq_assert (decoder != NULL);
 
-    int rc = (this->*process_msg) (decoder->msg ());
+
+    int rc = (this->*process_msg) (!options.has_decoder_ops ?
+		   decoder->msg () : (msg_t *)options.dec_ops.msg(decoder_ctx));
     if (rc == -1) {
         if (errno == EAGAIN)
             session->flush ();
@@ -446,13 +464,17 @@ void zmq::stream_engine_t::restart_input ()
 
     while (insize > 0) {
         size_t processed = 0;
-        rc = decoder->decode (inpos, insize, processed);
+        rc = !options.has_decoder_ops ?
+	     decoder->decode (inpos, insize, processed) :
+		options.dec_ops.decode(decoder_ctx, inpos, insize, &processed);
         zmq_assert (processed <= insize);
         inpos += processed;
         insize -= processed;
         if (rc == 0 || rc == -1)
             break;
-        rc = (this->*process_msg) (decoder->msg ());
+	msg_t *msg = !options.has_decoder_ops ?
+		decoder->msg() : (msg_t *)options.dec_ops.msg(decoder_ctx);
+        rc = (this->*process_msg) (msg);
         if (rc == -1)
             break;
     }
@@ -647,17 +669,27 @@ bool zmq::stream_engine_t::handshake ()
         encoder = new (std::nothrow) v2_encoder_t ();
         alloc_assert (encoder);
 
-        decoder = new (std::nothrow) v2_decoder_t (
-            in_batch_size, options.maxmsgsize);
-        alloc_assert (decoder);
+	if (!options.has_decoder_ops) {
+		decoder = new (std::nothrow) v2_decoder_t (
+			in_batch_size, options.maxmsgsize);
+		alloc_assert (decoder);
+	} else {
+		decoder_ctx = options.dec_ops.create(in_batch_size);
+		alloc_assert(decoder_ctx);
+	}
     }
     else {
         encoder = new (std::nothrow) v2_encoder_t ();
         alloc_assert (encoder);
 
-        decoder = new (std::nothrow) v2_decoder_t (
-            in_batch_size, options.maxmsgsize);
-        alloc_assert (decoder);
+	if (!options.has_decoder_ops) {
+	    decoder = new (std::nothrow) v2_decoder_t (
+			    in_batch_size, options.maxmsgsize);
+	    alloc_assert (decoder);
+	} else {
+	    decoder_ctx = options.dec_ops.create(in_batch_size);
+	    alloc_assert(decoder_ctx);
+	}
 
         if (options.mechanism == ZMQ_NULL
         &&  memcmp (greeting_recv + 12, "NULL\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0", 20) == 0) {

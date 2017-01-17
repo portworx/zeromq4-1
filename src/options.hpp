@@ -192,6 +192,8 @@ namespace zmq
         void (*recv_callback)(void *arg, zmq_msg_t *msg);
         void *recv_callback_arg;
 
+        bool has_decoder_ops;
+        decoder_ops dec_ops;
     };
 }
 
