@@ -581,6 +581,13 @@ int zmq_msg_init_data (zmq_msg_t *msg_, void *data_, size_t size_,
     return ((zmq::msg_t*) msg_)->init_data (data_, size_, ffn_, hint_);
 }
 
+void
+zmq_msg_init_content(zmq_msg_t *msg_, zmq_content *content_, size_t size_,
+	zmq_free_fn *ffn_, void *hint_)
+{
+    ((zmq::msg_t*) msg_)->init_content (content_, size_, ffn_, hint_);
+}
+
 int zmq_msg_init_iov (zmq_msg_t *msg, struct iovec *iov,
                       int iovcnt, zmq_free_fn *ffn, void *hint)
 {
@@ -1148,3 +1155,4 @@ void *zmq_msg_push(zmq_msg_t *msg, size_t len)
 {
     return ((zmq::msg_t *)msg)->push(len);
 }
+

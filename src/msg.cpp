@@ -139,25 +139,41 @@ int zmq::msg_t::init_data (void *data_, size_t size_, msg_free_fn *ffn_,
 
 }
 
+void zmq::msg_t::init_content(zmq_content *data_, size_t size_,
+	msg_free_fn *ffn_, void *hint_)
+{
+	init_lsm();
+	u.lmsg.content = reinterpret_cast<content_t *>(data_);
+	u.lmsg.content->data_iov = (iovec *)(u.lmsg.content + 1);
+	u.lmsg.content->iovcnt = 1;
+	u.lmsg.content->data_iov->iov_base = data_ + 1;
+	u.lmsg.content->data_iov->iov_len = size_;
+	u.lmsg.content->size = size_;
+	u.lmsg.content->ffn = ffn_;
+	u.lmsg.content->hint = hint_;
+	u.lmsg.flags |= malloced;
+	new (&u.lmsg.content->refcnt) zmq::atomic_counter_t ();
+}
+
 int zmq::msg_t::init_iov(iovec *iov, int iovcnt, size_t size, msg_free_fn *ffn_, void *hint_)
 {
-    zmq_assert(iov != NULL && iovcnt > 0 && ffn_ != NULL);
+	zmq_assert(iov != NULL && iovcnt > 0 && ffn_ != NULL);
 
-    init_lsm();
-    u.lmsg.content = (content_t*) malloc (sizeof (content_t));
-    if (!u.lmsg.content) {
-        errno = ENOMEM;
-        return -1;
-    }
+	init_lsm();
+	u.lmsg.content = (content_t*) malloc (sizeof (content_t));
+	if (!u.lmsg.content) {
+		errno = ENOMEM;
+		return -1;
+	}
 
-    u.lmsg.content->data_iov = iov;
-    u.lmsg.content->iovcnt = iovcnt;
-    u.lmsg.content->size = size;
-    u.lmsg.content->ffn = ffn_;
-    u.lmsg.content->hint = hint_;
-    new (&u.lmsg.content->refcnt) zmq::atomic_counter_t ();
+	u.lmsg.content->data_iov = iov;
+	u.lmsg.content->iovcnt = iovcnt;
+	u.lmsg.content->size = size;
+	u.lmsg.content->ffn = ffn_;
+	u.lmsg.content->hint = hint_;
+	new (&u.lmsg.content->refcnt) zmq::atomic_counter_t ();
 
-    return 0;
+	return 0;
 }
 
 int zmq::msg_t::init_delimiter ()
@@ -168,40 +184,43 @@ int zmq::msg_t::init_delimiter ()
     return 0;
 }
 
-int zmq::msg_t::close ()
+int zmq::msg_t::close()
 {
-    //  Check the validity of the message.
-    if (unlikely (!check ())) {
-        errno = EFAULT;
-        return -1;
-    }
+	//  Check the validity of the message.
+	if (unlikely (!check())) {
+		errno = EFAULT;
+		return -1;
+	}
 
-    if (u.base.type == type_lmsg) {
+	char type = u.base.type;
 
-        //  If the content is not shared, or if it is shared and the reference
-        //  count has dropped to zero, deallocate it.
-        if (!(u.lmsg.flags & msg_t::shared) ||
-              !u.lmsg.content->refcnt.sub (1)) {
+	//  Make the message invalid.
+	u.base.type = 0;
 
-            //  We used "placement new" operator to initialize the reference
-            //  counter so we call the destructor explicitly now.
-            u.lmsg.content->refcnt.~atomic_counter_t ();
+	if (u.base.metadata != NULL)
+		if (u.base.metadata->drop_ref())
+			delete u.base.metadata;
+	if (type == type_lmsg) {
 
-            if (u.lmsg.content->ffn)
-                u.lmsg.content->ffn (u.lmsg.content->data_iov->iov_base,
-                    u.lmsg.content->hint);
-            free (u.lmsg.content);
-        }
-    }
+		//  If the content is not shared, or if it is shared and the reference
+		//  count has dropped to zero, deallocate it.
+		if (!(u.lmsg.flags & msg_t::shared) ||
+		    !u.lmsg.content->refcnt.sub(1)) {
 
-    if (u.base.metadata != NULL)
-        if (u.base.metadata->drop_ref ())
-            delete u.base.metadata;
+			//  We used "placement new" operator to initialize the reference
+			//  counter so we call the destructor explicitly now.
+			u.lmsg.content->refcnt.~atomic_counter_t();
 
-    //  Make the message invalid.
-    u.base.type = 0;
+			if (u.lmsg.content->ffn)
+				u.lmsg.content
+				 ->ffn(u.lmsg.content->data_iov->iov_base,
+				       u.lmsg.content->hint);
+			if (!(u.lmsg.flags & malloced))
+				free(u.lmsg.content);
+		}
+	}
 
-    return 0;
+	return 0;
 }
 
 int zmq::msg_t::move (msg_t &src_)
@@ -624,3 +643,4 @@ void zmq::msg_t::add_to_iovec_buf(zmq::iovec_buf &buf)
 		assert(0);
 	}
 }
+

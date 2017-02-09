@@ -64,6 +64,7 @@ namespace zmq
         {
             more = 1,           //  Followed by more parts
             command = 2,        //  Command frame (see ZMTP spec)
+	    malloced = 4,	//  Message structure was malloced
             credential = 32,
             identity = 64,
             shared = 128
@@ -74,6 +75,9 @@ namespace zmq
         int init_size (size_t size_);
         int init_data (void *data_, size_t size_, msg_free_fn *ffn_,
             void *hint_);
+	void init_content(zmq_content *content_, size_t size_,
+		msg_free_fn *ffn_,
+		void *hint_);
         int init_iov(iovec *iov, int iovcnt, size_t size, msg_free_fn *ffn_, void *hint);
         int init_delimiter ();
         int close ();
