@@ -587,24 +587,10 @@ void *zmq::msg_t::pull(size_t size_)
         u.vsm.iov.iov_len -= size_;
 	return u.vsm.data + max_vsm_size - u.vsm.iov.iov_len;
     } else if (u.base.type == type_lmsg) {
-        if (u.lmsg.hdr_size) {
-            size_t v = std::min(u.lmsg.hdr_size, size_);
-            u.lmsg.hdr_size -= v;
-            size_ -= v;
-        }
-        while (size_) {
-            if (size_ < u.lmsg.content->data_iov[0].iov_len) {
-                u.lmsg.content->data_iov[0].iov_len -= size_;
-                u.lmsg.content->data_iov[0].iov_base =
-			(char *)u.lmsg.content->data_iov[0].iov_base + size_;
-                break;
-            } else {
-                zmq_assert(u.lmsg.content->iovcnt);
-                size_ -= u.lmsg.content->data_iov[0].iov_len;
-                ++u.lmsg.content->data_iov;
-                --u.lmsg.content->iovcnt;
-            }
-        }
+	assert(u.lmsg.hdr_size >= size_);
+	size_t v = std::min(u.lmsg.hdr_size, size_);
+	u.lmsg.hdr_size -= v;
+	size_ -= v;
 	return u.lmsg.hdr_size ?
 	       u.lmsg.hdr + sizeof(u.lmsg.hdr) - u.lmsg.hdr_size :
 	       u.lmsg.content->data_iov[0].iov_base;
