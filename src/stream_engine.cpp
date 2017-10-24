@@ -599,64 +599,15 @@ bool zmq::stream_engine_t::handshake ()
     //  Is the peer using ZMTP/1.0 with no revision number?
     //  If so, we send and receive rest of identity message
     if (greeting_recv [0] != 0xff || !(greeting_recv [9] & 0x01)) {
-        if (session->zap_enabled ()) {
-           // reject ZMTP 1.0 connections if ZAP is enabled
-           error (protocol_error);
-           return false;
-        }
-
-        encoder = new (std::nothrow) v1_encoder_t ();
-        alloc_assert (encoder);
-
-        decoder = new (std::nothrow) v1_decoder_t (in_batch_size, options.maxmsgsize);
-        alloc_assert (decoder);
-
-        //  We have already sent the message header.
-        //  Since there is no way to tell the encoder to
-        //  skip the message header, we simply throw that
-        //  header data away.
-        const size_t header_size = options.identity_size + 1 >= 255 ? 10 : 2;
-
-        //  Prepare the identity message and load it into encoder.
-        //  Then consume bytes we have already sent to the peer.
-        const int rc = tx_msg.init_size (options.identity_size);
-        zmq_assert (rc == 0);
-        memcpy (tx_msg.data (), options.identity, options.identity_size);
-        encoder->load_msg (&tx_msg);
-        encoder->encode (outbuf);
-        zmq_assert (outbuf.size == header_size);
-
-        //  Make sure the decoder sees the data we have already received.
-        inpos = greeting_recv;
-        insize = greeting_bytes_read;
-
-        //  To allow for interoperability with peers that do not forward
-        //  their subscriptions, we inject a phantom subscription message
-        //  message into the incoming message stream.
-        if (options.type == ZMQ_PUB || options.type == ZMQ_XPUB)
-            subscription_required = true;
-
-        //  We are sending our identity now and the next message
-        //  will come from the socket.
-        next_msg = &stream_engine_t::pull_msg_from_session;
-
-        //  We are expecting identity message.
-        process_msg = &stream_engine_t::process_identity_msg;
+        // reject ZMTP 1.0 connections
+        error (protocol_error);
+        return false;
     }
     else
     if (greeting_recv [revision_pos] == ZMTP_1_0) {
-        if (session->zap_enabled ()) {
-           // reject ZMTP 1.0 connections if ZAP is enabled
-           error (protocol_error);
-           return false;
-        }
-
-        encoder = new (std::nothrow) v1_encoder_t ();
-        alloc_assert (encoder);
-
-        decoder = new (std::nothrow) v1_decoder_t (
-            in_batch_size, options.maxmsgsize);
-        alloc_assert (decoder);
+        // reject ZMTP 1.0 connections
+        error (protocol_error);
+        return false;
     }
     else
     if (greeting_recv [revision_pos] == ZMTP_2_0) {
