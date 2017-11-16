@@ -42,6 +42,7 @@ namespace zmq
 
 struct iovec_buf {
         iovec_buf();
+	~iovec_buf();
 
         std::vector<iovec> iov;
         int curr;

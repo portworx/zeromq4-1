@@ -1009,6 +1009,11 @@ zmq::iovec_buf::iovec_buf() : curr(0), msg_allocated(false), size(0)
     msgs.reserve(max_msgs);
 }
 
+zmq::iovec_buf::~iovec_buf()
+{
+    reset();
+}
+
 void zmq::iovec_buf::reset()
 {
 	iov.clear();
