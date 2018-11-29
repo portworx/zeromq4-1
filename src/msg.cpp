@@ -210,12 +210,12 @@ int zmq::msg_t::close()
 			//  We used "placement new" operator to initialize the reference
 			//  counter so we call the destructor explicitly now.
 			u.lmsg.content->refcnt.~atomic_counter_t();
-
+			bool free_content = !(u.lmsg.flags & malloced);
 			if (u.lmsg.content->ffn)
 				u.lmsg.content
 				 ->ffn(u.lmsg.content->data_iov->iov_base,
 				       u.lmsg.content->hint);
-			if (!(u.lmsg.flags & malloced))
+			if (free_content)
 				free(u.lmsg.content);
 		}
 	}
