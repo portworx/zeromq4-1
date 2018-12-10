@@ -95,7 +95,7 @@ namespace zmq
         int num_bufs();
         size_t buf_size(int index);
         size_t size ();
-        unsigned char flags ();
+        unsigned char flags () { return u.base.flags; };
         void set_flags (unsigned char flags_);
         void reset_flags (unsigned char flags_);
 
