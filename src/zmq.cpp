@@ -603,6 +603,13 @@ int zmq_msg_init_iov_size (zmq_msg_t *msg_, struct iovec *iov,
     return ((zmq::msg_t*) msg_)->init_iov(iov, iovcnt, size, ffn, hint);
 }
 
+int zmq_msg_init_iov_size_content (zmq_msg_t *msg,
+        struct zmq_content *content, struct iovec *iov,
+        int iovcnt, size_t size, zmq_free_fn *ffn, void *hint)
+{
+    return ((zmq::msg_t*) msg)->init_iov_content(content, iov, iovcnt, size, ffn, hint);
+}
+
 int zmq_msg_send (zmq_msg_t *msg_, void *s_, int flags_)
 {
     if (!s_ || !((zmq::socket_base_t*) s_)->check_tag ()) {

@@ -158,7 +158,6 @@ void zmq::msg_t::init_content(zmq_content *data_, size_t size_,
 int zmq::msg_t::init_iov(iovec *iov, int iovcnt, size_t size, msg_free_fn *ffn_, void *hint_)
 {
 	zmq_assert(iov != NULL && iovcnt > 0 && ffn_ != NULL);
-
 	init_lsm();
 	u.lmsg.content = (content_t*) malloc (sizeof (content_t));
 	if (!u.lmsg.content) {
@@ -171,6 +170,22 @@ int zmq::msg_t::init_iov(iovec *iov, int iovcnt, size_t size, msg_free_fn *ffn_,
 	u.lmsg.content->size = size;
 	u.lmsg.content->ffn = ffn_;
 	u.lmsg.content->hint = hint_;
+	new (&u.lmsg.content->refcnt) zmq::atomic_counter_t ();
+
+	return 0;
+}
+
+int zmq::msg_t::init_iov_content(zmq_content *content, iovec *iov, int iovcnt, size_t size,
+	msg_free_fn *ffn_, void *hint_)
+{
+	init_lsm();
+	u.lmsg.content = (content_t*)content;
+	u.lmsg.content->data_iov = iov;
+	u.lmsg.content->iovcnt = iovcnt;
+	u.lmsg.content->size = size;
+	u.lmsg.content->ffn = ffn_;
+	u.lmsg.content->hint = hint_;
+	u.lmsg.flags |= malloced;
 	new (&u.lmsg.content->refcnt) zmq::atomic_counter_t ();
 
 	return 0;

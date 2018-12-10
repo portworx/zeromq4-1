@@ -79,6 +79,8 @@ namespace zmq
 		msg_free_fn *ffn_,
 		void *hint_);
         int init_iov(iovec *iov, int iovcnt, size_t size, msg_free_fn *ffn_, void *hint);
+	int init_iov_content(zmq_content *content, iovec *iov, int iovcnt, size_t size,
+		msg_free_fn *ffn_, void *hint);
         int init_delimiter ();
         int close ();
         int move (msg_t &src_);

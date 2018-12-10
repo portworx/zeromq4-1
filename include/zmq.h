@@ -228,6 +228,9 @@ ZMQ_EXPORT int zmq_msg_init_iov (zmq_msg_t *msg, struct iovec *iov,
     int iovcnt, zmq_free_fn *ffn, void *hint);
 ZMQ_EXPORT int zmq_msg_init_iov_size (zmq_msg_t *msg, struct iovec *iov,
     int iovcnt, size_t size, zmq_free_fn *ffn, void *hint);
+ZMQ_EXPORT int zmq_msg_init_iov_size_content (zmq_msg_t *msg,
+	struct zmq_content *content, struct iovec *iov,
+	int iovcnt, size_t size, zmq_free_fn *ffn, void *hint);
 ZMQ_EXPORT int zmq_msg_send (zmq_msg_t *msg, void *s, int flags);
 ZMQ_EXPORT int zmq_msg_recv (zmq_msg_t *msg, void *s, int flags);
 ZMQ_EXPORT int zmq_msg_close (zmq_msg_t *msg);
