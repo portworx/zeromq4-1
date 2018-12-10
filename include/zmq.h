@@ -246,6 +246,7 @@ ZMQ_EXPORT int zmq_msg_set (zmq_msg_t *msg, int property, int optval);
 ZMQ_EXPORT const char *zmq_msg_gets (zmq_msg_t *msg, const char *property);
 ZMQ_EXPORT struct zmq_id zmq_msg_id (zmq_msg_t *msg);
 ZMQ_EXPORT void zmq_msg_set_id(zmq_msg_t *msg, size_t len, void *data);
+ZMQ_EXPORT void zmq_msg_set_id_s(zmq_msg_t *msg, zmq_id id);
 ZMQ_EXPORT void *zmq_msg_pull(zmq_msg_t *msg, size_t len);
 ZMQ_EXPORT void *zmq_msg_push(zmq_msg_t *msg, size_t len);
 

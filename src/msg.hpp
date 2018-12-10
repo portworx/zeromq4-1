@@ -118,18 +118,21 @@ namespace zmq
 
 	zmq_id get_id() { return u.base.id; };
 
-	void set_id(const blob_t &blob) {
-		size_t sz = blob.size();
-		zmq_assert(0 < sz && sz <= 5);
-		u.base.id.len = blob.size();
-		memcpy(u.base.id.val, blob.data(), u.base.id.len);
+	void set_id(const blob_t &blob)
+	{
+		set_id(blob.size(), blob.data());
 	}
 
-	void set_id(size_t len, void *data)
+	void set_id(size_t len, const void *data)
 	{
-		zmq_assert(0 < len && len <= 5);
+		zmq_assert(0 < len && len <= 8);
 		u.base.id.len = len;
 		memcpy(u.base.id.val, data, len);
+	}
+
+	void set_id(zmq_id id)
+	{
+		u.base.id = id;
 	}
     private:
 	void init_vsm();
@@ -139,7 +142,7 @@ namespace zmq
         //  Size in bytes of the largest message that is still copied around
         //  rather than being reference-counted.
         enum { msg_t_size = 64 };
-        enum { max_vsm_size = msg_t_size - (sizeof(iovec) + sizeof (metadata_t *) + 2 + 6) };
+        enum { max_vsm_size = msg_t_size - (sizeof(iovec) + sizeof (metadata_t *) + 2 + 8) };
 
         //  Shared message buffer. Message data are either allocated in one
         //  continuous block along with this structure - thus avoiding one
@@ -180,44 +183,44 @@ namespace zmq
         union {
             struct {
                 metadata_t *metadata;
-                unsigned char unused [msg_t_size - (sizeof (metadata_t *) + 2 + 6)];
 		zmq_id id;
-                unsigned char type;
-                unsigned char flags;
+                unsigned char unused [msg_t_size - (sizeof (metadata_t *) + 2 + 8)];
+		unsigned char type;
+		unsigned char flags;
             } base;
             struct {
                 metadata_t *metadata;
+		zmq_id id;
                 iovec iov;
                 unsigned char data [max_vsm_size];
-		zmq_id id;
                 unsigned char type;
                 unsigned char flags;
             } vsm;
             struct {
                 metadata_t *metadata;
+		zmq_id id;
                 content_t *content;
 		size_t hdr_size;
                 unsigned char hdr [msg_t_size - (sizeof (metadata_t *) +
-			sizeof (size_t) + sizeof (content_t*) + 2 + 6)];
-		zmq_id id;
+			sizeof (size_t) + sizeof (content_t*) + 2 + 8)];
                 unsigned char type;
                 unsigned char flags;
             } lmsg;
             struct {
                 metadata_t *metadata;
+		zmq_id id;
                 iovec iov;
 		size_t hdr_size;
                 unsigned char hdr
                     [msg_t_size - (sizeof (metadata_t *) + sizeof (iovec) +
-				sizeof(size_t) + 2 + 6)];
-		zmq_id id;
+				sizeof(size_t) + 2 + 8)];
                 unsigned char type;
                 unsigned char flags;
             } cmsg;
             struct {
                 metadata_t *metadata;
-                unsigned char unused [msg_t_size - (sizeof (metadata_t *) + 2 + 6)];
 		zmq_id id;
+                unsigned char unused [msg_t_size - (sizeof (metadata_t *) + 2 + 8)];
                 unsigned char type;
                 unsigned char flags;
             } delimiter;
