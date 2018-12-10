@@ -719,9 +719,8 @@ int zmq::stream_engine_t::identity_msg (msg_t *msg_)
 
 int zmq::stream_engine_t::process_identity_msg (msg_t *msg_)
 {
-    if (sizeof(id_.val) >= msg_->size()) {
-        id_.len = msg_->size();
-        memcpy(id_.val, msg_->data(), id_.len);
+    if (sizeof(id_) - 1 >= msg_->size()) {
+        set_id(id_, msg_->data(), msg_->size());
     }
 
     if (options.recv_identity) {
@@ -810,9 +809,8 @@ void zmq::stream_engine_t::mechanism_ready ()
     if (options.recv_identity) {
         msg_t identity;
         mechanism->peer_identity (&identity);
-        if (sizeof(id_.val) >= identity.size()) {
-            id_.len = identity.size();
-            memcpy(id_.val, identity.data(), id_.len);
+        if (sizeof(id_) - 1 >= identity.size()) {
+            set_id(id_, identity.data(), identity.size());
         }
 
         const int rc = session->push_msg (&identity);
@@ -908,9 +906,9 @@ int zmq::stream_engine_t::decode_and_push (msg_t *msg_)
 
     if (mechanism->decode (msg_) == -1)
         return -1;
-    if (options.recv_callback && id_.len) {
+    if (options.recv_callback && id_ != 0) {
         if (!(msg_->flags() & msg_t::more)) {
-            msg_->set_id(id_.len, id_.val);
+            msg_->set_id(id_);
             options.recv_callback(options.recv_callback_arg, (zmq_msg_t *)msg_);
             return 0;
         } else {

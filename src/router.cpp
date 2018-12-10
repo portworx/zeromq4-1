@@ -520,11 +520,14 @@ int zmq::px_server::xsend (msg_t *msg_)
     if (!more_out) {
         zmq_assert (!current_out);
 
-        zmq_id id = msg_->get_id();
+        unsigned char id_val[8];
+        size_t id_len = zmq_id_unpack(msg_->get_id(), id_val);
+
         //  Find the pipe associated with the identity stored in the prefix.
         //  If there's no such pipe just silently ignore the message, unless
         //  router_mandatory is set.
-        blob_t identity (id.val, id.len);
+
+        blob_t identity (id_val, id_len);
         outpipes_t::iterator it = outpipes.find (identity);
 
         if (it != outpipes.end ()) {

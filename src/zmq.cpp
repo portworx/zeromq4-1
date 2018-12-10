@@ -1143,7 +1143,7 @@ int zmq_has (const char *capability)
     return false;
 }
 
-struct zmq_id zmq_msg_id(zmq_msg_t *msg)
+zmq_id zmq_msg_id(zmq_msg_t *msg)
 {
     return ((zmq::msg_t *)msg)->get_id();
 }
@@ -1151,6 +1151,11 @@ struct zmq_id zmq_msg_id(zmq_msg_t *msg)
 void zmq_msg_set_id(zmq_msg_t *msg, size_t len, void *data)
 {
     ((zmq::msg_t *)msg)->set_id(len, data);
+}
+
+void zmq_msg_set_id_s(zmq_msg_t *msg, zmq_id id)
+{
+    ((zmq::msg_t *)msg)->set_id(id);
 }
 
 void *zmq_msg_pull(zmq_msg_t *msg, size_t len)

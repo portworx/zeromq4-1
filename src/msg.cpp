@@ -62,7 +62,7 @@ inline void zmq::msg_t::init_vsm()
     u.vsm.type = type_vsm;
     u.vsm.flags = 0;
     u.vsm.iov.iov_len = 0;
-    u.vsm.id.len = 0;
+    u.vsm.id = 0;
 }
 
 inline void zmq::msg_t::init_lsm()
@@ -70,7 +70,7 @@ inline void zmq::msg_t::init_lsm()
     u.lmsg.metadata = NULL;
     u.lmsg.type = type_lmsg;
     u.lmsg.flags = 0;
-    u.lmsg.id.len = 0;
+    u.lmsg.id = 0;
     u.lmsg.hdr_size = 0;
 }
 
@@ -116,7 +116,7 @@ int zmq::msg_t::init_data (void *data_, size_t size_, msg_free_fn *ffn_,
 	u.cmsg.hdr_size = 0;
         u.cmsg.iov.iov_base = data_;
         u.cmsg.iov.iov_len = size_;
-        u.cmsg.id.len = 0;
+        u.cmsg.id = 0;
     }
     else {
         init_lsm();
@@ -196,6 +196,7 @@ int zmq::msg_t::init_delimiter ()
     u.delimiter.metadata = NULL;
     u.delimiter.type = type_delimiter;
     u.delimiter.flags = 0;
+    u.delimiter.id = 0;
     return 0;
 }
 
