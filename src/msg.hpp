@@ -50,6 +50,14 @@ extern "C"
 
 namespace zmq
 {
+    inline void set_id(zmq_id &id, const void *data, size_t len) {
+    	assert(0 <= len && len <= 7);
+    	id = len;
+    	for (auto i = 0u; i < len; ++i) {
+    		id |= (unsigned long)((unsigned char*)data)[i] << ((i + 1) * 8);
+    	}
+    }
+
     struct iovec_buf;
 
     //  Note that this structure needs to be explicitly constructed
@@ -120,14 +128,12 @@ namespace zmq
 
 	void set_id(const blob_t &blob)
 	{
-		set_id(blob.size(), blob.data());
+		zmq::set_id(u.base.id, blob.data(), blob.size());
 	}
 
 	void set_id(size_t len, const void *data)
 	{
-		zmq_assert(0 < len && len <= 8);
-		u.base.id.len = len;
-		memcpy(u.base.id.val, data, len);
+		zmq::set_id(u.base.id, data, len);
 	}
 
 	void set_id(zmq_id id)
@@ -141,7 +147,7 @@ namespace zmq
 
         //  Size in bytes of the largest message that is still copied around
         //  rather than being reference-counted.
-        enum { msg_t_size = 64 };
+        enum { msg_t_size = 72 };
         enum { max_vsm_size = msg_t_size - (sizeof(iovec) + sizeof (metadata_t *) + 2 + 8) };
 
         //  Shared message buffer. Message data are either allocated in one

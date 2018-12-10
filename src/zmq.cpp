@@ -1143,7 +1143,7 @@ int zmq_has (const char *capability)
     return false;
 }
 
-struct zmq_id zmq_msg_id(zmq_msg_t *msg)
+zmq_id zmq_msg_id(zmq_msg_t *msg)
 {
     return ((zmq::msg_t *)msg)->get_id();
 }
