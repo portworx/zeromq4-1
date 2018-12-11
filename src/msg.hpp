@@ -53,7 +53,7 @@ namespace zmq
     inline void set_id(zmq_id &id, const void *data, size_t len) {
     	assert(0 <= len && len <= 7);
     	id = len;
-    	for (auto i = 0u; i < len; ++i) {
+    	for (size_t i = 0u; i < len; ++i) {
     		id |= (unsigned long)((unsigned char*)data)[i] << ((i + 1) * 8);
     	}
     }
