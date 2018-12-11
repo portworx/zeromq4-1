@@ -51,7 +51,7 @@ extern "C"
 namespace zmq
 {
     inline void set_id(zmq_id &id, const void *data, size_t len) {
-    	assert(0 <= len && len <= 7);
+    	assert(len <= 7);
     	id = len;
     	for (size_t i = 0u; i < len; ++i) {
     		id |= (unsigned long)((unsigned char*)data)[i] << ((i + 1) * 8);
@@ -102,7 +102,7 @@ namespace zmq
 	int iovcnt();
         int num_bufs();
         size_t buf_size(int index);
-        size_t size ();
+        size_t size () { return u.base.size; };
         unsigned char flags () { return u.base.flags; };
         void set_flags (unsigned char flags_);
         void reset_flags (unsigned char flags_);
@@ -142,7 +142,7 @@ namespace zmq
 	}
     private:
 	void init_vsm();
-	void init_lsm();
+	void init_lsm(size_t size);
 	iovec *lmsg_iov(int index);
 
         //  Size in bytes of the largest message that is still copied around
@@ -190,7 +190,9 @@ namespace zmq
             struct {
                 metadata_t *metadata;
 		zmq_id id;
-                unsigned char unused [msg_t_size - (sizeof (metadata_t *) + 2 + 8)];
+		void *ptr_unused;
+		size_t size;
+                unsigned char unused [msg_t_size - (sizeof (metadata_t *) + 2 + 24)];
 		unsigned char type;
 		unsigned char flags;
             } base;
@@ -206,11 +208,13 @@ namespace zmq
                 metadata_t *metadata;
 		zmq_id id;
                 content_t *content;
-		size_t hdr_size;
+		size_t size;	// total message size
                 unsigned char hdr [msg_t_size - (sizeof (metadata_t *) +
 			sizeof (size_t) + sizeof (content_t*) + 2 + 8)];
                 unsigned char type;
                 unsigned char flags;
+
+                size_t hdr_size() const { return size - content->size; }
             } lmsg;
             struct {
                 metadata_t *metadata;
