@@ -28,6 +28,7 @@
 */
 
 #include "epoll.hpp"
+#include <urcu-qsbr.h>
 #if defined ZMQ_USE_EPOLL
 
 #include <sys/epoll.h>
@@ -152,14 +153,18 @@ void zmq::epoll_t::loop ()
         int timeout = (int) execute_timers ();
 
         //  Wait for events.
+        rcu_thread_offline();
         int n = epoll_wait (epoll_fd, &ev_buf [0], max_io_events,
             timeout ? timeout : -1);
+        rcu_thread_online();
         if (n == -1) {
             errno_assert (errno == EINTR);
             continue;
         }
 
         for (int i = 0; i < n; i ++) {
+            rcu_quiescent_state();
+
             poll_entry_t *pe = ((poll_entry_t*) ev_buf [i].data.ptr);
 
             if (pe->fd == retired_fd)
@@ -186,7 +191,13 @@ void zmq::epoll_t::loop ()
 
 void zmq::epoll_t::worker_routine (void *arg_)
 {
+    rcu_register_thread();
+    rcu_defer_register_thread();
+
     ((epoll_t*) arg_)->loop ();
+
+    rcu_defer_unregister_thread();
+    rcu_unregister_thread();
 }
 
 #endif

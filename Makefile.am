@@ -230,7 +230,7 @@ endif
 
 libzmq_la_CPPFLAGS =
 libzmq_la_CXXFLAGS = @LIBZMQ_EXTRA_CXXFLAGS@
-libzmq_la_LIBADD =
+libzmq_la_LIBADD = -lurcu-qsbr
 
 if USE_LIBSODIUM
 libzmq_la_CPPFLAGS += ${sodium_CFLAGS}
