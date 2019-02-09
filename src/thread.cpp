@@ -30,6 +30,7 @@
 #include "thread.hpp"
 #include "err.hpp"
 #include "platform.hpp"
+#include "urcu-qsbr.h"
 
 #ifdef ZMQ_HAVE_WINDOWS
 
@@ -109,8 +110,13 @@ void zmq::thread_t::start (thread_fn *tfn_, void *arg_)
 
 void zmq::thread_t::stop ()
 {
+    bool read_ongoing = rcu_read_ongoing();
+    if (read_ongoing)
+        rcu_thread_offline();
     int rc = pthread_join (descriptor, NULL);
     posix_assert (rc);
+    if (read_ongoing)
+        rcu_thread_online();
 }
 
 void zmq::thread_t::setSchedulingParameters(int priority_, int schedulingPolicy_)
