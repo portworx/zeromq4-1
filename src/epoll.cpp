@@ -191,11 +191,13 @@ void zmq::epoll_t::loop ()
 
 void zmq::epoll_t::worker_routine (void *arg_)
 {
+    rcu_defer_register_thread();
     rcu_register_thread();
 
     ((epoll_t*) arg_)->loop ();
 
     rcu_unregister_thread();
+    rcu_defer_unregister_thread();
 }
 
 #endif
