@@ -359,6 +359,8 @@ void zmq::stream_engine_t::out_event ()
 {
     zmq_assert (!io_error);
 
+    bool nothing_pending = false;
+
     //  If write buffer is empty, try to read new data from the encoder.
     if (!outbuf.size) {
 
@@ -381,8 +383,10 @@ void zmq::stream_engine_t::out_event ()
 		outbuf.msg_allocated = true;
 	    }
 
-            if ((this->*next_msg) (&outbuf.msgs.back()) == -1)
+            if ((this->*next_msg) (&outbuf.msgs.back()) == -1) {
+                nothing_pending = true;
                 break;
+            }
 	    outbuf.msg_allocated = false;
             encoder->load_msg (&outbuf.msgs.back());
 	    encoder->encode(outbuf);
@@ -391,7 +395,7 @@ void zmq::stream_engine_t::out_event ()
         //  If there is no data to send, stop polling for output.
         if (outbuf.size == 0) {
             output_stopped = true;
-            reset_pollout (handle);
+            poller->reset_pollout_state (handle);
             return;
         }
     }
@@ -412,7 +416,7 @@ void zmq::stream_engine_t::out_event ()
             if (errno == EINTR)
                 continue;
             if (errno != EAGAIN) {
-                reset_pollout (handle);
+                poller->reset_pollout_state (handle);
             }
             return;
         }
@@ -423,9 +427,13 @@ void zmq::stream_engine_t::out_event ()
 
     //  If we are still handshaking and there are no data
     //  to send, stop polling for output.
-    if (unlikely (handshaking))
+    if (unlikely (handshaking)) {
         if (outbuf.size == 0)
-            reset_pollout (handle);
+            poller->reset_pollout_state (handle);
+    } else if (outbuf.size == 0 && nothing_pending) {
+        output_stopped = true;
+        poller->reset_pollout_state(handle);
+    }
 }
 
 void zmq::stream_engine_t::restart_output ()
@@ -434,7 +442,7 @@ void zmq::stream_engine_t::restart_output ()
         return;
 
     if (likely (output_stopped)) {
-        set_pollout (handle);
+        poller->set_pollout_state(handle);
         output_stopped = false;
     }
 
@@ -443,6 +451,8 @@ void zmq::stream_engine_t::restart_output ()
     //  Thus we try to write the data to socket avoiding polling for POLLOUT.
     //  Consequently, the latency should be better in request/reply scenarios.
     out_event ();
+
+    poller->sync_pollout_state(handle);
 }
 
 void zmq::stream_engine_t::restart_input ()

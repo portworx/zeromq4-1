@@ -76,9 +76,10 @@ namespace zmq
         void out_event ();
         void timer_event (int id_);
 
+        poller_t *poller;
+
     private:
 
-        poller_t *poller;
 
         io_object_t (const io_object_t&);
         const io_object_t &operator = (const io_object_t&);

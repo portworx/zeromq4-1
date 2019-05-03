@@ -72,6 +72,7 @@ zmq::epoll_t::handle_t zmq::epoll_t::add_fd (fd_t fd_, i_poll_events *events_)
 
     pe->fd = fd_;
     pe->ev.events = 0;
+    pe->need_events = 0;
     pe->ev.data.ptr = pe;
     pe->events = events_;
 
@@ -99,6 +100,7 @@ void zmq::epoll_t::rm_fd (handle_t handle_)
 void zmq::epoll_t::set_pollin (handle_t handle_)
 {
     poll_entry_t *pe = (poll_entry_t*) handle_;
+    pe->need_events |= EPOLLIN;
     pe->ev.events |= EPOLLIN;
     int rc = epoll_ctl (epoll_fd, EPOLL_CTL_MOD, pe->fd, &pe->ev);
     errno_assert (rc != -1);
@@ -107,6 +109,7 @@ void zmq::epoll_t::set_pollin (handle_t handle_)
 void zmq::epoll_t::reset_pollin (handle_t handle_)
 {
     poll_entry_t *pe = (poll_entry_t*) handle_;
+    pe->need_events &= ~((short) EPOLLIN);
     pe->ev.events &= ~((short) EPOLLIN);
     int rc = epoll_ctl (epoll_fd, EPOLL_CTL_MOD, pe->fd, &pe->ev);
     errno_assert (rc != -1);
@@ -115,6 +118,7 @@ void zmq::epoll_t::reset_pollin (handle_t handle_)
 void zmq::epoll_t::set_pollout (handle_t handle_)
 {
     poll_entry_t *pe = (poll_entry_t*) handle_;
+    pe->need_events |= EPOLLOUT;
     pe->ev.events |= EPOLLOUT;
     int rc = epoll_ctl (epoll_fd, EPOLL_CTL_MOD, pe->fd, &pe->ev);
     errno_assert (rc != -1);
@@ -123,7 +127,32 @@ void zmq::epoll_t::set_pollout (handle_t handle_)
 void zmq::epoll_t::reset_pollout (handle_t handle_)
 {
     poll_entry_t *pe = (poll_entry_t*) handle_;
+    pe->need_events &= ~((short) EPOLLOUT);
     pe->ev.events &= ~((short) EPOLLOUT);
+    int rc = epoll_ctl (epoll_fd, EPOLL_CTL_MOD, pe->fd, &pe->ev);
+    errno_assert (rc != -1);
+}
+
+void zmq::epoll_t::set_pollout_state(zmq::epoll_t::handle_t handle_)
+{
+    poll_entry_t *pe = (poll_entry_t*) handle_;
+    pe->need_events |= EPOLLOUT;
+}
+
+void zmq::epoll_t::reset_pollout_state(zmq::epoll_t::handle_t handle_)
+{
+    poll_entry_t *pe = (poll_entry_t*) handle_;
+    pe->need_events &= ~((short) EPOLLOUT);
+}
+
+void zmq::epoll_t::sync_pollout_state(zmq::epoll_t::handle_t handle_)
+{
+    poll_entry_t *pe = (poll_entry_t*) handle_;
+    if (((pe->need_events & EPOLLOUT) != 0) == ((pe->ev.events & EPOLLOUT) != 0)) {
+        return;
+    }
+    pe->ev.events &= ~((short) EPOLLOUT);
+    pe->ev.events |= (pe->need_events & EPOLLOUT);
     int rc = epoll_ctl (epoll_fd, EPOLL_CTL_MOD, pe->fd, &pe->ev);
     errno_assert (rc != -1);
 }
@@ -173,8 +202,10 @@ void zmq::epoll_t::loop ()
                 pe->events->in_event ();
             if (pe->fd == retired_fd)
                continue;
-            if (ev_buf [i].events & EPOLLOUT)
+            if (ev_buf [i].events & EPOLLOUT) {
                 pe->events->out_event ();
+                sync_pollout_state(pe);
+            }
             if (pe->fd == retired_fd)
                 continue;
             if (ev_buf [i].events & EPOLLIN)
