@@ -54,6 +54,11 @@ namespace zmq
         void send (const command_t &cmd_);
         int recv (command_t *cmd_, int timeout_);
 
+        // returns true if command received
+        bool recv_no_wait(command_t *cmd) {
+            return cpipe.read(cmd);
+        }
+
 #ifdef HAVE_FORK
         // close the file descriptors in the signaller. This is used in a forked
         // child process to close the file descriptors so that they do not interfere
@@ -61,14 +66,14 @@ namespace zmq
         void forked () { signaler.forked (); }
 #endif
 
+        //  Signaler to pass signals from writer thread to reader thread.
+        signaler_t signaler;
+
     private:
 
         //  The pipe to store actual commands.
         typedef ypipe_t <command_t, command_pipe_granularity> cpipe_t;
         cpipe_t cpipe;
-
-        //  Signaler to pass signals from writer thread to reader thread.
-        signaler_t signaler;
 
         //  There's only one thread receiving from the mailbox, but there
         //  is arbitrary number of threads sending. Given that ypipe requires
