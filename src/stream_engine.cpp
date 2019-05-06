@@ -431,6 +431,7 @@ void zmq::stream_engine_t::out_event ()
         if (outbuf.size == 0)
             poller->reset_pollout_state (handle);
     } else if (outbuf.size == 0 && nothing_pending) {
+        outbuf.reset();
         output_stopped = true;
         poller->reset_pollout_state(handle);
     }
