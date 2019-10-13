@@ -319,7 +319,6 @@ ZMQ_EXPORT void *zmq_msg_push(zmq_msg_t *msg, size_t len);
 #define ZMQ_PROBE_ROUTER 51
 #define ZMQ_REQ_CORRELATE 52
 #define ZMQ_REQ_RELAXED 53
-#define ZMQ_CONFLATE 54
 #define ZMQ_ZAP_DOMAIN 55
 #define ZMQ_ROUTER_HANDOVER 56
 #define ZMQ_TOS 57

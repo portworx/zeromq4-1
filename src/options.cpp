@@ -65,7 +65,6 @@ zmq::options_t::options_t () :
     as_server (0),
     gss_plaintext (false),
     socket_id (0),
-    conflate (false),
     handshake_ivl (30000),
     recv_callback(NULL),
     recv_callback_arg(NULL),
@@ -460,13 +459,6 @@ int zmq::options_t::setsockopt (int option_, const void *optval_,
             break;
 #       endif
 
-        case ZMQ_CONFLATE:
-            if (is_int && (value == 0 || value == 1)) {
-                conflate = (value != 0);
-                return 0;
-            }
-            break;
-
         //  If libgssapi isn't installed, these options provoke EINVAL
 #       ifdef HAVE_LIBGSSAPI_KRB5
         case ZMQ_GSSAPI_SERVER:
@@ -807,13 +799,6 @@ int zmq::options_t::getsockopt (int option_, void *optval_, size_t *optvallen_)
             }
             break;
 #       endif
-
-        case ZMQ_CONFLATE:
-            if (is_int) {
-                *value = conflate;
-                return 0;
-            }
-            break;
 
         //  If libgssapi isn't installed, these options provoke EINVAL
 #       ifdef HAVE_LIBGSSAPI_KRB5
