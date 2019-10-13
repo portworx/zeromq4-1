@@ -503,16 +503,8 @@ int zmq::socket_base_t::connect (const char *addr_)
         object_t *parents [2] = {this, peer.socket == NULL ? this : peer.socket};
         pipe_t *new_pipes [2] = {NULL, NULL};
 
-        bool conflate = options.conflate &&
-            (options.type == ZMQ_DEALER ||
-             options.type == ZMQ_PULL ||
-             options.type == ZMQ_PUSH ||
-             options.type == ZMQ_PUB ||
-             options.type == ZMQ_SUB);
-
-        int hwms [2] = {conflate? -1 : sndhwm, conflate? -1 : rcvhwm};
-        bool conflates [2] = {conflate, conflate};
-        int rc = pipepair (parents, new_pipes, hwms, conflates);
+        int hwms [2] = {sndhwm, rcvhwm};
+        int rc = pipepair (parents, new_pipes, hwms);
         errno_assert (rc == 0);
 
         //  Attach local end of the pipe to this socket object.
@@ -690,17 +682,8 @@ int zmq::socket_base_t::connect (const char *addr_)
         object_t *parents [2] = {this, session};
         pipe_t *new_pipes [2] = {NULL, NULL};
 
-        bool conflate = options.conflate &&
-            (options.type == ZMQ_DEALER ||
-             options.type == ZMQ_PULL ||
-             options.type == ZMQ_PUSH ||
-             options.type == ZMQ_PUB ||
-             options.type == ZMQ_SUB);
-
-        int hwms [2] = {conflate? -1 : options.sndhwm,
-            conflate? -1 : options.rcvhwm};
-        bool conflates [2] = {conflate, conflate};
-        rc = pipepair (parents, new_pipes, hwms, conflates);
+        int hwms [2] = {options.sndhwm, options.rcvhwm};
+        rc = pipepair (parents, new_pipes, hwms);
         errno_assert (rc == 0);
 
         //  Attach local end of the pipe to the socket object.
