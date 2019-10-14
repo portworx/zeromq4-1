@@ -114,7 +114,6 @@ namespace zmq
         bool is_credential () const;
         bool is_delimiter () const;
         bool is_vsm ();
-        bool is_cmsg ();
 
         //  After calling this function you can copy the message in POD-style
         //  refs_ times. No need to call copy.
@@ -177,9 +176,7 @@ namespace zmq
             type_lmsg = 102,
             //  Delimiter messages are used in envelopes
             type_delimiter = 103,
-            //  CMSG messages point to constant data
-            type_cmsg = 104,
-            type_max = 104
+            type_max = 103
         };
 
         //  Note that fields shared between different message types are not
@@ -216,17 +213,6 @@ namespace zmq
 
                 size_t hdr_size() const { return size - content->size; }
             } lmsg;
-            struct {
-                metadata_t *metadata;
-		zmq_id id;
-                iovec iov;
-		size_t hdr_size;
-                unsigned char hdr
-                    [msg_t_size - (sizeof (metadata_t *) + sizeof (iovec) +
-				sizeof(size_t) + 2 + 8)];
-                unsigned char type;
-                unsigned char flags;
-            } cmsg;
             struct {
                 metadata_t *metadata;
 		zmq_id id;
