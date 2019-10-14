@@ -73,6 +73,7 @@ namespace zmq
             more = 1,           //  Followed by more parts
             command = 2,        //  Command frame (see ZMTP spec)
 	    malloced = 4,	//  Message structure was malloced
+	    delimiter = 8,      //  Message is a delimiter
             credential = 32,
             identity = 64,
             shared = 128
@@ -174,9 +175,7 @@ namespace zmq
             type_vsm = 101,
             //  LMSG messages store the content in malloc-ed memory
             type_lmsg = 102,
-            //  Delimiter messages are used in envelopes
-            type_delimiter = 103,
-            type_max = 103
+            type_max = 102
         };
 
         //  Note that fields shared between different message types are not
@@ -213,13 +212,6 @@ namespace zmq
 
                 size_t hdr_size() const { return size - content->size; }
             } lmsg;
-            struct {
-                metadata_t *metadata;
-		zmq_id id;
-                unsigned char unused [msg_t_size - (sizeof (metadata_t *) + 2 + 8)];
-                unsigned char type;
-                unsigned char flags;
-            } delimiter;
         } u;
     };
 

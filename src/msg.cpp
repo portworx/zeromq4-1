@@ -190,10 +190,10 @@ int zmq::msg_t::init_iov_content(zmq_content *content, iovec *iov, int iovcnt, s
 
 int zmq::msg_t::init_delimiter ()
 {
-    u.delimiter.metadata = NULL;
-    u.delimiter.type = type_delimiter;
-    u.delimiter.flags = 0;
-    u.delimiter.id = 0;
+    u.base.metadata = NULL;
+    u.base.type = type_vsm;
+    u.base.flags = delimiter;
+    u.base.id = 0;
     return 0;
 }
 
@@ -449,7 +449,7 @@ bool zmq::msg_t::is_credential () const
 
 bool zmq::msg_t::is_delimiter () const
 {
-    return u.base.type == type_delimiter;
+    return (u.base.flags & delimiter) != 0;
 }
 
 bool zmq::msg_t::is_vsm ()
