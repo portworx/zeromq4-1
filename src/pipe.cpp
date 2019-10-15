@@ -198,7 +198,9 @@ bool zmq::pipe_t::check_write ()
 
 bool zmq::pipe_t::write (msg_t *msg_)
 {
-    if (unlikely (!check_write ()))
+    assert(!msg_->is_empty());
+
+	if (unlikely (!check_write ()))
         return false;
 
     bool more = msg_->flags () & msg_t::more ? true : false;
