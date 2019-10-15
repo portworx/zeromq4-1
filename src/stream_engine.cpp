@@ -1086,7 +1086,7 @@ zmq::iovec_buf::~iovec_buf()
 void zmq::iovec_buf::reset()
 {
 	iov.clear();
-	for (;next_msg != msgs.size(); ++next_msg)
+	for (;next_msg < msgs.size(); ++next_msg)
 		msgs[next_msg].close();
 	msgs.clear();
 	curr = 0;
