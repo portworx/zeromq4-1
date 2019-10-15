@@ -58,11 +58,9 @@ bool zmq::msg_t::check ()
 
 inline void zmq::msg_t::init_vsm()
 {
-    u.vsm.metadata = NULL;
-    u.vsm.type = type_vsm;
-    u.vsm.flags = 0;
-    u.vsm.iov.iov_len = 0;
-    u.vsm.id = 0;
+    u.lmsg.size = 0;
+    u.lmsg.type = type_empty;
+    u.lmsg.flags = 0;
 }
 
 inline void zmq::msg_t::init_lsm(size_t size)
@@ -82,23 +80,23 @@ int zmq::msg_t::init ()
 
 int zmq::msg_t::init_size (size_t size_)
 {
-	init_lsm(size_);
-	u.lmsg.content =
-		(content_t*) malloc (sizeof (content_t) + sizeof(iovec) + size_);
-	if (unlikely (!u.lmsg.content)) {
-		errno = ENOMEM;
-		return -1;
-	}
+    init_lsm(size_);
+    u.lmsg.content =
+        (content_t *) malloc(sizeof(content_t) + sizeof(iovec) + size_);
+    if (unlikely (!u.lmsg.content)) {
+        errno = ENOMEM;
+        return -1;
+    }
 
-	u.lmsg.content->data_iov = (iovec *)(u.lmsg.content + 1);
-	u.lmsg.content->iovcnt = 1;
-	u.lmsg.content->data_iov->iov_base = (char *)(u.lmsg.content + 1) + sizeof(iovec);
-	u.lmsg.content->data_iov->iov_len = size_;
-	u.lmsg.content->size = size_;
-	u.lmsg.content->ffn = NULL;
-	u.lmsg.content->hint = NULL;
-	new (&u.lmsg.content->refcnt) zmq::atomic_counter_t ();
-	return 0;
+    u.lmsg.content->data_iov = (iovec *) (u.lmsg.content + 1);
+    u.lmsg.content->iovcnt = 1;
+    u.lmsg.content->data_iov->iov_base = (char *) (u.lmsg.content + 1) + sizeof(iovec);
+    u.lmsg.content->data_iov->iov_len = size_;
+    u.lmsg.content->size = size_;
+    u.lmsg.content->ffn = NULL;
+    u.lmsg.content->hint = NULL;
+    new(&u.lmsg.content->refcnt) zmq::atomic_counter_t();
+    return 0;
 }
 
 namespace {
@@ -110,9 +108,6 @@ void do_nothing(void *, void *) {}
 int zmq::msg_t::init_data (void *data_, size_t size_, msg_free_fn *ffn_,
     void *hint_)
 {
-    //  If data is NULL and size is not 0, a segfault
-    //  would occur once the data is accessed
-    zmq_assert (data_ != NULL || size_ == 0);
     if (ffn_ == nullptr) {
         ffn_ = do_nothing;
     }
@@ -191,7 +186,7 @@ int zmq::msg_t::init_iov_content(zmq_content *content, iovec *iov, int iovcnt, s
 int zmq::msg_t::init_delimiter ()
 {
     u.base.metadata = NULL;
-    u.base.type = type_vsm;
+    u.base.type = type_empty;
     u.base.flags = delimiter;
     u.base.id = 0;
     return 0;
@@ -199,51 +194,40 @@ int zmq::msg_t::init_delimiter ()
 
 int zmq::msg_t::close()
 {
-	//  Check the validity of the message.
-	if (unlikely (!check())) {
-		errno = EFAULT;
-		return -1;
-	}
+    if (u.base.type == type_empty)
+        return 0;
 
-	char type = u.base.type;
+    assert(u.base.type == type_lmsg);
 
-	//  Make the message invalid.
-	u.base.type = 0;
+    char type = u.base.type;
 
-	if (u.base.metadata != NULL)
-		if (u.base.metadata->drop_ref())
-			delete u.base.metadata;
-	if (type == type_lmsg) {
+    //  Make the message invalid.
+    u.base.type = 0;
 
-		//  If the content is not shared, or if it is shared and the reference
-		//  count has dropped to zero, deallocate it.
-		if (!(u.lmsg.flags & msg_t::shared) ||
-		    !u.lmsg.content->refcnt.sub(1)) {
+    if (u.base.metadata != NULL)
+        if (u.base.metadata->drop_ref())
+            delete u.base.metadata;
 
-			//  We used "placement new" operator to initialize the reference
-			//  counter so we call the destructor explicitly now.
-			u.lmsg.content->refcnt.~atomic_counter_t();
-			bool free_content = !(u.lmsg.flags & malloced);
-			if (u.lmsg.content->ffn)
-				u.lmsg.content
-				 ->ffn(u.lmsg.content->data_iov->iov_base,
-				       u.lmsg.content->hint);
-			if (free_content)
-				free(u.lmsg.content);
-		}
-	}
+    //  If the content is not shared, or if it is shared and the reference
+    //  count has dropped to zero, deallocate it.
+    if (!(u.lmsg.flags & msg_t::shared) ||
+        !u.lmsg.content->refcnt.sub(1)) {
 
-	return 0;
+        //  We used "placement new" operator to initialize the reference
+        //  counter so we call the destructor explicitly now.
+        u.lmsg.content->refcnt.~atomic_counter_t();
+        bool free_content = !(u.lmsg.flags & malloced);
+        if (u.lmsg.content->ffn)
+            u.lmsg.content
+                ->ffn(u.lmsg.content->data_iov->iov_base,
+                      u.lmsg.content->hint);
+        if (free_content)
+            free(u.lmsg.content);
+    }
 }
 
 int zmq::msg_t::move (msg_t &src_)
 {
-    //  Check the validity of the source.
-    if (unlikely (!src_.check ())) {
-        errno = EFAULT;
-        return -1;
-    }
-
     int rc = close ();
     if (unlikely (rc < 0))
         return rc;
@@ -259,33 +243,24 @@ int zmq::msg_t::move (msg_t &src_)
 
 int zmq::msg_t::copy (msg_t &src_)
 {
-    //  Check the validity of the source.
-    if (unlikely (!src_.check ())) {
-        errno = EFAULT;
-        return -1;
-    }
-
     int rc = close ();
     if (unlikely (rc < 0))
         return rc;
 
-    if (src_.u.base.type == type_lmsg) {
-
+    if (src_.u.lmsg.type == type_lmsg) {
         //  One reference is added to shared messages. Non-shared messages
         //  are turned into shared messages and reference count is set to 2.
         if (src_.u.lmsg.flags & msg_t::shared)
-            src_.u.lmsg.content->refcnt.add (1);
+            src_.u.lmsg.content->refcnt.add(1);
         else {
             src_.u.lmsg.flags |= msg_t::shared;
-            src_.u.lmsg.content->refcnt.set (2);
+            src_.u.lmsg.content->refcnt.set(2);
         }
+
+        if (src_.u.base.metadata != NULL)
+            src_.u.base.metadata->add_ref ();
     }
 
-    if (src_.u.base.metadata != NULL)
-        src_.u.base.metadata->add_ref ();
-
-    // if message is vsm, pointer to data in iov will be incorrect after copy,
-    // however it is reset when iov is returned.
     *this = src_;
 
     return 0;
@@ -294,115 +269,40 @@ int zmq::msg_t::copy (msg_t &src_)
 
 void *zmq::msg_t::data ()
 {
-    //  Check the validity of the message.
-    zmq_assert (check ());
-
-    switch (u.base.type) {
-    case type_vsm:
-        return u.vsm.data + max_vsm_size - u.vsm.iov.iov_len;
-    case type_lmsg:
-        return u.lmsg.size > u.lmsg.content->size ?
-	       u.lmsg.hdr + sizeof(u.lmsg.hdr) - u.lmsg.hdr_size() :
-	       u.lmsg.content->data_iov[0].iov_base;
-    default:
-        zmq_assert (false);
-        return NULL;
-    }
+    return u.lmsg.size > u.lmsg.content->size ?
+           u.lmsg.hdr + sizeof(u.lmsg.hdr) - u.lmsg.hdr_size() :
+           u.lmsg.content->data_iov[0].iov_base;
 }
 
 void *zmq::msg_t::buf(int index)
 {
-    //  Check the validity of the message.
-    zmq_assert (check ());
-
-    switch (u.base.type) {
-        case type_vsm:
-            zmq_assert(index == 0);
-	    return u.vsm.data + max_vsm_size - u.vsm.iov.iov_len;
-        case type_lmsg:
-        {
-  	    size_t hdr_size = u.lmsg.hdr_size();
-            int off = hdr_size ? 1 : 0;
-            zmq_assert(index - off < u.lmsg.content->iovcnt);
-            if (!index) {
-                return hdr_size ? u.lmsg.hdr + sizeof(u.lmsg.hdr) - hdr_size :
-                       u.lmsg.content->data_iov[0].iov_base;
-            } else {
-                return u.lmsg.content->data_iov[index - off].iov_base;
-            }
-        }
-        default:
-            zmq_assert (false);
-            return NULL;
+    size_t hdr_size = u.lmsg.hdr_size();
+    int off = hdr_size ? 1 : 0;
+    zmq_assert(index - off < u.lmsg.content->iovcnt);
+    if (!index) {
+        return hdr_size ? u.lmsg.hdr + sizeof(u.lmsg.hdr) - hdr_size :
+               u.lmsg.content->data_iov[0].iov_base;
+    } else {
+        return u.lmsg.content->data_iov[index - off].iov_base;
     }
 }
 
 size_t zmq::msg_t::buf_size(int index)
 {
-    //  Check the validity of the message.
-    zmq_assert (check ());
-
-    switch (u.base.type) {
-        case type_vsm:
-            zmq_assert(index == 0);
-            return u.vsm.iov.iov_len;
-        case type_lmsg:
-	{
-		size_t hdr_size = u.lmsg.hdr_size();
-		int off = hdr_size ? 1 : 0;
-		zmq_assert(index - off < u.lmsg.content->iovcnt);
-		if (!index) {
-			return hdr_size ? hdr_size :
-			       u.lmsg.content->data_iov[0].iov_len;
-		} else {
-			return u.lmsg.content->data_iov[index - off].iov_len;
-		}
-	}
-        default:
-            zmq_assert (false);
-            return 0;
+    size_t hdr_size = u.lmsg.hdr_size();
+    int off = hdr_size ? 1 : 0;
+    zmq_assert(index - off < u.lmsg.content->iovcnt);
+    if (!index) {
+        return hdr_size ? hdr_size :
+               u.lmsg.content->data_iov[0].iov_len;
+    } else {
+        return u.lmsg.content->data_iov[index - off].iov_len;
     }
 }
 
 int zmq::msg_t::num_bufs()
 {
-    //  Check the validity of the message.
-    zmq_assert (check ());
-
-    switch (u.base.type) {
-        case type_vsm:
-            return 1;
-        case type_lmsg:
-            return (u.lmsg.hdr_size() > 0 ? 1 : 0) + u.lmsg.content->iovcnt;
-        default:
-            zmq_assert (false);
-            return 0;
-    }
-}
-
-int zmq::msg_t::iovcnt()
-{
-	if (u.base.type == type_lmsg) {
-            return u.lmsg.content->iovcnt;
-        } else if (u.base.type == type_vsm) {
-            return 0;
-	} else {
-	     return 0;
-	}
-}
-
-iovec *zmq::msg_t::iov()
-{
-    switch (u.base.type) {
-    case type_vsm:
-        u.vsm.iov.iov_base = u.vsm.data + max_vsm_size - u.vsm.iov.iov_len;
-        return &u.vsm.iov;
-    case type_lmsg:
-        return u.lmsg.content->data_iov;
-    default:
-	zmq_assert (false);
-	return NULL;
-    }
+     return (u.lmsg.hdr_size() > 0 ? 1 : 0) + u.lmsg.content->iovcnt;
 }
 
 void zmq::msg_t::set_flags (unsigned char flags_)
@@ -452,9 +352,9 @@ bool zmq::msg_t::is_delimiter () const
     return (u.base.flags & delimiter) != 0;
 }
 
-bool zmq::msg_t::is_vsm ()
+bool zmq::msg_t::is_empty ()
 {
-    return u.base.type == type_vsm;
+    return u.base.type == type_empty;
 }
 
 void zmq::msg_t::add_refs (int refs_)
@@ -515,63 +415,36 @@ bool zmq::msg_t::rm_refs (int refs_)
 
 void *zmq::msg_t::push(size_t size_)
 {
-    if (u.base.type == type_vsm) {
-        zmq_assert(size_ + u.vsm.iov.iov_len <= max_vsm_size);
-        u.vsm.iov.iov_len += size_;
-	return u.vsm.data + max_vsm_size - u.vsm.iov.iov_len;
-    } else if (u.base.type == type_lmsg) {
-    	size_t hdr_size = u.lmsg.hdr_size();
-        zmq_assert(size_ + hdr_size <= sizeof(u.lmsg.hdr));
-        u.lmsg.size += size_;
-        hdr_size += size_;
-	return hdr_size ?
-	   u.lmsg.hdr + sizeof(u.lmsg.hdr) - hdr_size :
-	   u.lmsg.content->data_iov[0].iov_base;
-    } else {
-        zmq_assert(0);
-        return NULL;
-    }
+    size_t hdr_size = u.lmsg.hdr_size();
+    zmq_assert(size_ + hdr_size <= sizeof(u.lmsg.hdr));
+    u.lmsg.size += size_;
+    hdr_size += size_;
+    return hdr_size ?
+           u.lmsg.hdr + sizeof(u.lmsg.hdr) - hdr_size :
+           u.lmsg.content->data_iov[0].iov_base;
 }
 
 void *zmq::msg_t::pull(size_t size_)
 {
-    if (u.base.type == type_vsm) {
-        zmq_assert(size_ <= u.vsm.iov.iov_len);
-        u.vsm.iov.iov_len -= size_;
-	return u.vsm.data + max_vsm_size - u.vsm.iov.iov_len;
-    } else if (u.base.type == type_lmsg) {
-    	size_t hdr_size = u.lmsg.hdr_size();
-	assert(hdr_size >= size_);
-	u.lmsg.size -= size_;
-	hdr_size -= size_;
-	return hdr_size > 0 ?
-	       u.lmsg.hdr + sizeof(u.lmsg.hdr) - hdr_size :
-	       u.lmsg.content->data_iov[0].iov_base;
-    } else {
-        zmq_assert(0);
-        return NULL;
-    }
+    size_t hdr_size = u.lmsg.hdr_size();
+    assert(hdr_size >= size_);
+    u.lmsg.size -= size_;
+    hdr_size -= size_;
+    return hdr_size > 0 ?
+           u.lmsg.hdr + sizeof(u.lmsg.hdr) - hdr_size :
+           u.lmsg.content->data_iov[0].iov_base;
 }
 
 void zmq::msg_t::add_to_iovec_buf(zmq::iovec_buf &buf)
 {
-	if (u.base.type == type_lmsg) {
-		size_t hdr_size = u.lmsg.hdr_size();
-		if (hdr_size) {
-			iovec i = { u.lmsg.hdr + sizeof(u.lmsg.hdr) - hdr_size, hdr_size };
-			buf.iov.push_back(i);
-		}
-		std::copy(u.lmsg.content->data_iov,
-			  u.lmsg.content->data_iov + u.lmsg.content->iovcnt,
-				std::back_inserter(buf.iov));
-		buf.size += u.lmsg.size;
-	} else if (u.base.type == type_vsm) {
-		iovec i = { u.vsm.data + sizeof(u.vsm.data) - u.vsm.iov.iov_len,
-			    u.vsm.iov.iov_len};
-		buf.iov.push_back(i);
-		buf.size += u.vsm.iov.iov_len;
-	} else {
-		assert(0);
-	}
+    size_t hdr_size = u.lmsg.hdr_size();
+    if (hdr_size) {
+        iovec i = {u.lmsg.hdr + sizeof(u.lmsg.hdr) - hdr_size, hdr_size};
+        buf.iov.push_back(i);
+    }
+    std::copy(u.lmsg.content->data_iov,
+              u.lmsg.content->data_iov + u.lmsg.content->iovcnt,
+              std::back_inserter(buf.iov));
+    buf.size += u.lmsg.size;
 }
 

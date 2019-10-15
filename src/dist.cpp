@@ -152,7 +152,7 @@ void zmq::dist_t::distribute (msg_t *msg_)
         return;
     }
 
-    if (msg_->is_vsm ()) {
+    if (msg_->is_empty()) {
         for (pipes_t::size_type i = 0; i < matching; ++i)
             if(!write (pipes [i], msg_))
                 --i; //  Retry last write because index will have been swapped

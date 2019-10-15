@@ -99,8 +99,11 @@ namespace zmq
 	void *push(size_t size_);
 	void *pull(size_t size_);
 	void add_to_iovec_buf(iovec_buf &buf);
-        iovec *iov();
-	int iovcnt();
+
+        iovec *iov() const { return u.lmsg.content->data_iov; };
+
+	int iovcnt() const { return u.lmsg.content->iovcnt; }
+
         int num_bufs();
         size_t buf_size(int index);
         size_t size () { return u.base.size; };
@@ -114,7 +117,7 @@ namespace zmq
         bool is_identity () const;
         bool is_credential () const;
         bool is_delimiter () const;
-        bool is_vsm ();
+        bool is_empty ();
 
         //  After calling this function you can copy the message in POD-style
         //  refs_ times. No need to call copy.
@@ -171,8 +174,8 @@ namespace zmq
         enum type_t
         {
             type_min = 101,
-            //  VSM messages store the content in the message itself
-            type_vsm = 101,
+            //  empty message
+            type_empty = 101,
             //  LMSG messages store the content in malloc-ed memory
             type_lmsg = 102,
             type_max = 102
@@ -192,14 +195,6 @@ namespace zmq
 		unsigned char type;
 		unsigned char flags;
             } base;
-            struct {
-                metadata_t *metadata;
-		zmq_id id;
-                iovec iov;
-                unsigned char data [max_vsm_size];
-                unsigned char type;
-                unsigned char flags;
-            } vsm;
             struct {
                 metadata_t *metadata;
 		zmq_id id;
