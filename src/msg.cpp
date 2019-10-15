@@ -199,8 +199,6 @@ int zmq::msg_t::close()
 
     assert(u.base.type == type_lmsg);
 
-    char type = u.base.type;
-
     //  Make the message invalid.
     u.base.type = 0;
 
@@ -210,20 +208,20 @@ int zmq::msg_t::close()
 
     //  If the content is not shared, or if it is shared and the reference
     //  count has dropped to zero, deallocate it.
-    if (!(u.lmsg.flags & msg_t::shared) ||
-        !u.lmsg.content->refcnt.sub(1)) {
+    if (!(u.lmsg.flags & msg_t::shared) || !u.lmsg.content->refcnt.sub(1)) {
 
         //  We used "placement new" operator to initialize the reference
         //  counter so we call the destructor explicitly now.
         u.lmsg.content->refcnt.~atomic_counter_t();
         bool free_content = !(u.lmsg.flags & malloced);
         if (u.lmsg.content->ffn)
-            u.lmsg.content
-                ->ffn(u.lmsg.content->data_iov->iov_base,
+            u.lmsg.content->ffn(u.lmsg.content->data_iov->iov_base,
                       u.lmsg.content->hint);
         if (free_content)
             free(u.lmsg.content);
     }
+
+    return 0;
 }
 
 int zmq::msg_t::move (msg_t &src_)
