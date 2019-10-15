@@ -84,7 +84,7 @@ int zmq::req_t::xsend (msg_t *msg_)
         }
 
         msg_t bottom;
-        int rc = bottom.init ();
+        int rc = bottom.init_size (0);
         errno_assert (rc == 0);
         bottom.set_flags (msg_t::more);
 
@@ -95,7 +95,7 @@ int zmq::req_t::xsend (msg_t *msg_)
 
         message_begins = false;
 
-        // Eat all currently avaliable messages before the request is fully
+        // Eat all currently available messages before the request is fully
         // sent. This is done to avoid:
         //   REQ sends request to A, A replies, B replies too.
         //   A's reply was first and matches, that is used.
