@@ -51,10 +51,15 @@ struct iovec_buf {
 
         std::vector<zmq::msg_t> msgs;
 
+        size_t next_msg = -1;    // index of next message to free
+
+        size_t next_msg_remain = 0; // number of bytes remaining unsent in next message
+
 	static const size_t max_msgs = 100;
 
         void reset();
         void pull(size_t num_bytes);
+        void pull_iov(size_t num_bytes);
         int count() { return iov.size() - curr; };
 };
 

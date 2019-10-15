@@ -405,7 +405,8 @@ void zmq::stream_engine_t::out_event ()
     //  arbitrarily large. However, we assume that underlying TCP layer has
     //  limited transmission buffer and thus the actual number of bytes
     //  written should be reasonably modest.
-    int nbytes;
+
+    ssize_t nbytes;
     while (1) {
          nbytes = writev(s, &outbuf.iov[outbuf.curr], outbuf.count());
 
@@ -423,16 +424,18 @@ void zmq::stream_engine_t::out_event ()
         break;
     }
 
-    outbuf.pull(nbytes);
-
     //  If we are still handshaking and there are no data
     //  to send, stop polling for output.
     if (unlikely (handshaking)) {
+        outbuf.pull_iov(nbytes);
         if (outbuf.size == 0)
             poller->reset_pollout_state (handle);
-    } else if (outbuf.size == 0 && nothing_pending) {
-        output_stopped = true;
-        poller->reset_pollout_state(handle);
+    } else {
+        outbuf.pull(nbytes);
+        if (outbuf.size == 0 && nothing_pending) {
+            output_stopped = true;
+            poller->reset_pollout_state(handle);
+        }
     }
 }
 
@@ -704,6 +707,11 @@ bool zmq::stream_engine_t::handshake ()
     // Start polling for output if necessary.
     if (outbuf.size == 0)
         set_pollout (handle);
+
+    // add a dummy message covering the remained of data in the out buffer so
+    // freeing the messages on transmit complete works
+    outbuf.msgs.resize(outbuf.msgs.size() + 1);
+    outbuf.msgs.back().init_size(outbuf.iov.back().iov_len);
 
     //  Handshaking was successful.
     //  Switch into the normal message flow.
@@ -1000,22 +1008,69 @@ void zmq::stream_engine_t::timer_event (int id_)
 
 void zmq::iovec_buf::pull(size_t num_bytes)
 {
-    	zmq_assert(num_bytes <= size);
-	size_t remain = num_bytes;
-	while (remain) {
-		iovec &iov_curr = iov[curr];
-		if (remain < iov_curr.iov_len) {
-			iov_curr.iov_len -= remain;
-			iov_curr.iov_base = (char *)iov_curr.iov_base + remain;
-			size -= remain;
-			return;
-		} else {
-			zmq_assert(remain >= iov_curr.iov_len);
-			remain -= iov_curr.iov_len;
-			size -= iov_curr.iov_len;
-			++curr;
-		}
-	}
+    if (num_bytes == 0)
+        return;
+
+    zmq_assert(num_bytes <= size);
+    size -= num_bytes;
+
+    if (next_msg_remain == 0) {
+        next_msg = next_msg == (size_t)-1 ? 0 : next_msg + 1;
+        assert(next_msg < msgs.size());
+        next_msg_remain = msgs[next_msg].size();
+    }
+
+    size_t remain = num_bytes;
+    while (remain) {
+        iovec &iov_curr = iov[curr];
+        auto this_bytes = std::min(remain, iov_curr.iov_len);
+        next_msg_remain -= this_bytes;
+        if (next_msg_remain == 0) {
+            // complete message transmitted, can close it so memory can be freed
+            msgs[next_msg].close();
+            // do not reset the index if out of messages, the iteration will continue
+            // when new messages are added in the end of the vector
+            if (++next_msg < msgs.size()) {
+                next_msg_remain = msgs[next_msg].size();
+            } else {
+                next_msg_remain = 0;
+            }
+        }
+        if (remain < iov_curr.iov_len) {
+            iov_curr.iov_len -= remain;
+            iov_curr.iov_base = (char *) iov_curr.iov_base + remain;
+            return;
+        } else {
+            zmq_assert(remain >= iov_curr.iov_len);
+            remain -= iov_curr.iov_len;
+            ++curr;
+        }
+    }
+}
+
+void zmq::iovec_buf::pull_iov(size_t num_bytes)
+{
+    if (num_bytes == 0)
+        return;
+
+    zmq_assert(num_bytes <= size);
+    size -= num_bytes;
+
+    assert(msgs.empty());
+
+    size_t remain = num_bytes;
+    while (remain) {
+        iovec &iov_curr = iov[curr];
+        if (remain < iov_curr.iov_len) {
+            iov_curr.iov_len -= remain;
+            iov_curr.iov_base = (char *) iov_curr.iov_base + remain;
+            return;
+        } else {
+            zmq_assert(remain >= iov_curr.iov_len);
+            remain -= iov_curr.iov_len;
+            ++curr;
+        }
+    }
 }
 
 zmq::iovec_buf::iovec_buf() : curr(0), msg_allocated(false), size(0)
@@ -1031,11 +1086,12 @@ zmq::iovec_buf::~iovec_buf()
 void zmq::iovec_buf::reset()
 {
 	iov.clear();
-	for (std::vector<zmq::msg_t>::iterator it = msgs.begin();
-	     it != msgs.end(); ++it)
-		it->close();
+	for (;next_msg != msgs.size(); ++next_msg)
+		msgs[next_msg].close();
 	msgs.clear();
 	curr = 0;
 	size = 0;
+	next_msg_remain = 0;
+	next_msg = (size_t)-1;
 	msg_allocated = false;
 }
