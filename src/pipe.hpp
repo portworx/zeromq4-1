@@ -31,12 +31,12 @@
 #define __ZMQ_PIPE_HPP_INCLUDED__
 
 #include "msg.hpp"
-#include "ypipe_base.hpp"
 #include "config.hpp"
 #include "object.hpp"
 #include "stdint.hpp"
 #include "array.hpp"
 #include "blob.hpp"
+#include "ypipe.hpp"
 
 namespace zmq
 {
@@ -131,7 +131,7 @@ namespace zmq
     private:
 
         //  Type of the underlying lock-free pipe.
-        typedef ypipe_base_t <msg_t> upipe_t;
+        typedef ypipe_t <msg_t, message_pipe_granularity> upipe_t;
 
         //  Command handlers.
         void process_activate_read ();
