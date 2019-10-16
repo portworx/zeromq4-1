@@ -33,7 +33,6 @@
 #include "atomic_ptr.hpp"
 #include "yqueue.hpp"
 #include "platform.hpp"
-#include "ypipe_base.hpp"
 
 namespace zmq
 {
@@ -45,7 +44,7 @@ namespace zmq
     //  N is granularity of the pipe, i.e. how many items are needed to
     //  perform next memory allocation.
 
-    template <typename T, int N> class ypipe_t : public ypipe_base_t <T>
+    template <typename T, int N> class ypipe_t
     {
     public:
 
@@ -59,12 +58,6 @@ namespace zmq
             //  (unless pipe is dead, in which case c is set to NULL).
             r = w = f = &queue.back ();
             c.set (&queue.back ());
-        }
-
-        //  The destructor doesn't have to be virtual. It is mad virtual
-        //  just to keep ICC and code checking tools from complaining.
-        inline virtual ~ypipe_t ()
-        {
         }
 
         //  Following function (write) deliberately copies uninitialised data
