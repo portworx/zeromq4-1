@@ -42,8 +42,6 @@ libzmq_la_SOURCES = \
 	src/decoder.hpp \
 	src/devpoll.cpp \
 	src/devpoll.hpp \
-	src/dist.cpp \
-	src/dist.hpp \
 	src/encoder.hpp \
 	src/epoll.cpp \
 	src/epoll.hpp \
@@ -122,12 +120,6 @@ libzmq_la_SOURCES = \
 	src/poller_base.hpp \
 	src/proxy.cpp \
 	src/proxy.hpp \
-	src/pub.cpp \
-	src/pub.hpp \
-	src/pull.cpp \
-	src/pull.hpp \
-	src/push.cpp \
-	src/push.hpp \
 	src/random.cpp \
 	src/random.hpp \
 	src/raw_decoder.cpp \
@@ -159,8 +151,6 @@ libzmq_la_SOURCES = \
 	src/stream.hpp \
 	src/stream_engine.cpp \
 	src/stream_engine.hpp \
-	src/sub.cpp \
-	src/sub.hpp \
 	src/tcp.cpp \
 	src/tcp.hpp \
 	src/tcp_address.cpp \
@@ -190,10 +180,6 @@ libzmq_la_SOURCES = \
 	src/v2_protocol.hpp \
 	src/windows.hpp \
 	src/wire.hpp \
-	src/xpub.hpp \
-	src/xpub.cpp \
-	src/xsub.cpp \
-	src/xsub.hpp \
 	src/ypipe.hpp \
 	src/ypipe_base.hpp \
 	src/ypipe_conflate.hpp \
@@ -254,8 +240,6 @@ endif
 noinst_PROGRAMS = \
 	local_lat \
 	remote_lat \
-	local_thr \
-	remote_thr \
 	inproc_lat \
 	inproc_thr
 
@@ -264,12 +248,6 @@ local_lat_SOURCES = perf/local_lat.cpp
 
 remote_lat_LDADD = libzmq.la
 remote_lat_SOURCES = perf/remote_lat.cpp
-
-local_thr_LDADD = libzmq.la
-local_thr_SOURCES = perf/local_thr.cpp
-
-remote_thr_LDADD = libzmq.la
-remote_thr_SOURCES = perf/remote_thr.cpp
 
 inproc_lat_LDADD = libzmq.la
 inproc_lat_SOURCES = perf/inproc_lat.cpp

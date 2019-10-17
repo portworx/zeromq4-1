@@ -403,7 +403,6 @@ set(cxx-sources
         curve_server.cpp
         dealer.cpp
         devpoll.cpp
-        dist.cpp
         epoll.cpp
         err.cpp
         fq.cpp
@@ -435,9 +434,6 @@ set(cxx-sources
         poller_base.cpp
         precompiled.cpp
         proxy.cpp
-        pub.cpp
-        pull.cpp
-        push.cpp
         random.cpp
         raw_encoder.cpp
         raw_decoder.cpp
@@ -453,7 +449,6 @@ set(cxx-sources
         socks_connecter.cpp
         stream.cpp
         stream_engine.cpp
-        sub.cpp
         tcp.cpp
         tcp_address.cpp
         tcp_connecter.cpp
@@ -464,8 +459,6 @@ set(cxx-sources
         v1_encoder.cpp
         v2_decoder.cpp
         v2_encoder.cpp
-        xpub.cpp
-        xsub.cpp
         zmq.cpp
         zmq_utils.cpp
         config.hpp)
