@@ -65,7 +65,6 @@ inline void zmq::msg_t::init_vsm()
 
 inline void zmq::msg_t::init_lsm(size_t size)
 {
-    u.lmsg.metadata = NULL;
     u.lmsg.type = type_lmsg;
     u.lmsg.flags = 0;
     u.lmsg.id = 0;
@@ -185,7 +184,6 @@ int zmq::msg_t::init_iov_content(zmq_content *content, iovec *iov, int iovcnt, s
 
 int zmq::msg_t::init_delimiter ()
 {
-    u.base.metadata = NULL;
     u.base.type = type_empty;
     u.base.flags = delimiter;
     u.base.id = 0;
@@ -201,10 +199,6 @@ int zmq::msg_t::close()
 
     //  Make the message invalid.
     u.base.type = 0;
-
-    if (u.base.metadata != NULL)
-        if (u.base.metadata->drop_ref())
-            delete u.base.metadata;
 
     //  If the content is not shared, or if it is shared and the reference
     //  count has dropped to zero, deallocate it.
@@ -254,9 +248,6 @@ int zmq::msg_t::copy (msg_t &src_)
             src_.u.lmsg.flags |= msg_t::shared;
             src_.u.lmsg.content->refcnt.set(2);
         }
-
-        if (src_.u.base.metadata != NULL)
-            src_.u.base.metadata->add_ref ();
     }
 
     *this = src_;
@@ -313,28 +304,6 @@ void zmq::msg_t::reset_flags (unsigned char flags_)
     u.base.flags &= ~flags_;
 }
 
-zmq::metadata_t *zmq::msg_t::metadata () const
-{
-    return u.base.metadata;
-}
-
-void zmq::msg_t::set_metadata (zmq::metadata_t *metadata_)
-{
-    assert (metadata_ != NULL);
-    assert (u.base.metadata == NULL);
-    metadata_->add_ref ();
-    u.base.metadata = metadata_;
-}
-
-void zmq::msg_t::reset_metadata ()
-{
-    if (u.base.metadata) {
-        if (u.base.metadata->drop_ref ())
-            delete u.base.metadata;
-        u.base.metadata = NULL;
-    }
-}
-
 bool zmq::msg_t::is_identity () const
 {
     return (u.base.flags & identity) == identity;
@@ -353,62 +322,6 @@ bool zmq::msg_t::is_delimiter () const
 bool zmq::msg_t::is_empty ()
 {
     return u.base.type == type_empty;
-}
-
-void zmq::msg_t::add_refs (int refs_)
-{
-    zmq_assert (refs_ >= 0);
-
-    //  Operation not supported for messages with metadata.
-    zmq_assert (u.base.metadata == NULL);
-
-    //  No copies required.
-    if (!refs_)
-        return;
-
-    //  VSMs, CMSGS and delimiters can be copied straight away. The only
-    //  message type that needs special care are long messages.
-    if (u.base.type == type_lmsg) {
-        if (u.lmsg.flags & msg_t::shared)
-            u.lmsg.content->refcnt.add (refs_);
-        else {
-            u.lmsg.content->refcnt.set (refs_ + 1);
-            u.lmsg.flags |= msg_t::shared;
-        }
-    }
-}
-
-bool zmq::msg_t::rm_refs (int refs_)
-{
-    zmq_assert (refs_ >= 0);
-
-    //  Operation not supported for messages with metadata.
-    zmq_assert (u.base.metadata == NULL);
-
-    //  No copies required.
-    if (!refs_)
-        return true;
-
-    //  If there's only one reference close the message.
-    if (u.base.type != type_lmsg || !(u.lmsg.flags & msg_t::shared)) {
-        close ();
-        return false;
-    }
-
-    //  The only message type that needs special care are long messages.
-    if (!u.lmsg.content->refcnt.sub (refs_)) {
-        //  We used "placement new" operator to initialize the reference
-        //  counter so we call the destructor explicitly now.
-        u.lmsg.content->refcnt.~atomic_counter_t ();
-
-        if (u.lmsg.content->ffn)
-            u.lmsg.content->ffn (u.lmsg.content->data_iov->iov_base, u.lmsg.content->hint);
-        free (u.lmsg.content);
-
-        return false;
-    }
-
-    return true;
 }
 
 void *zmq::msg_t::push(size_t size_)

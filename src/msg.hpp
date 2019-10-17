@@ -111,23 +111,12 @@ namespace zmq
         void set_flags (unsigned char flags_);
         void reset_flags (unsigned char flags_);
 
-            metadata_t *metadata () const;
-        void set_metadata (metadata_t *metadata_);
-        void reset_metadata ();
         bool is_identity () const;
         bool is_credential () const;
         bool is_delimiter () const;
         bool is_empty ();
 
-        //  After calling this function you can copy the message in POD-style
-        //  refs_ times. No need to call copy.
-        void add_refs (int refs_);
-
-        //  Removes references previously added by add_refs. If the number of
-        //  references drops to 0, the message is closed and false is returned.
-        bool rm_refs (int refs_);
-
-	zmq_id get_id() { return u.base.id; };
+        zmq_id get_id() { return u.base.id; };
 
 	void set_id(const blob_t &blob)
 	{
@@ -150,7 +139,7 @@ namespace zmq
 
         //  Size in bytes of the largest message that is still copied around
         //  rather than being reference-counted.
-        enum { msg_t_size = 72 };
+        enum { msg_t_size = 64 };
         enum { max_vsm_size = msg_t_size - (sizeof(iovec) + sizeof (metadata_t *) + 2 + 8) };
 
         //  Shared message buffer. Message data are either allocated in one
@@ -187,21 +176,18 @@ namespace zmq
         //  the union.
         union {
             struct {
-                metadata_t *metadata;
 		zmq_id id;
 		void *ptr_unused;
 		size_t size;
-                unsigned char unused [msg_t_size - (sizeof (metadata_t *) + 2 + 24)];
+                unsigned char unused [msg_t_size - (2 + 24)];
 		unsigned char type;
 		unsigned char flags;
             } base;
             struct {
-                metadata_t *metadata;
 		zmq_id id;
                 content_t *content;
 		size_t size;	// total message size
-                unsigned char hdr [msg_t_size - (sizeof (metadata_t *) +
-			sizeof (size_t) + sizeof (content_t*) + 2 + 8)];
+                unsigned char hdr [msg_t_size - (sizeof (size_t) + sizeof (content_t*) + 2 + 8)];
                 unsigned char type;
                 unsigned char flags;
 

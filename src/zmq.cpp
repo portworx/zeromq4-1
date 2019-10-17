@@ -703,23 +703,6 @@ int zmq_msg_set (zmq_msg_t *msg_, int property, int optval)
     }
 }
 
-
-//  Get message metadata string
-
-const char *zmq_msg_gets (zmq_msg_t *msg_, const char *property_)
-{
-    zmq::metadata_t *metadata = ((zmq::msg_t*) msg_)->metadata ();
-    const char *value = NULL;
-    if (metadata)
-        value = metadata->get (std::string (property_));
-    if (value)
-        return value;
-    else {
-        errno = EINVAL;
-        return NULL;
-    }
-}
-
 // Polling.
 
 int zmq_poll (zmq_pollitem_t *items_, int nitems_, long timeout_)

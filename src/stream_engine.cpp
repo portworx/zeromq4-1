@@ -879,8 +879,6 @@ int zmq::stream_engine_t::push_msg_to_session (msg_t *msg_)
 }
 
 int zmq::stream_engine_t::push_raw_msg_to_session (msg_t *msg_) {
-    if (metadata && metadata != msg_->metadata())
-        msg_->set_metadata(metadata);
     return push_msg_to_session(msg_);
 }
 
@@ -934,8 +932,6 @@ int zmq::stream_engine_t::decode_and_push (msg_t *msg_)
             options.recv_callback = NULL;
         }
     }
-	if (metadata)
-		msg_->set_metadata (metadata);
     if (session->push_msg (msg_) == -1) {
         if (errno == EAGAIN)
             process_msg = &stream_engine_t::push_one_then_decode_and_push;

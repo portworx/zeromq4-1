@@ -209,7 +209,7 @@ ZMQ_EXPORT int zmq_ctx_destroy (void *context);
 /* union here ensures correct alignment on architectures that require it, e.g.
  * SPARC and ARM
  */
-typedef union zmq_msg_t { unsigned char _ [72]; void *p; } zmq_msg_t;
+typedef union zmq_msg_t { unsigned char _ [64]; void *p; } zmq_msg_t;
 
 struct zmq_content {
         void *_private[7];
@@ -243,7 +243,6 @@ ZMQ_EXPORT size_t zmq_msg_size (zmq_msg_t *msg);
 ZMQ_EXPORT int zmq_msg_more (zmq_msg_t *msg);
 ZMQ_EXPORT int zmq_msg_get (zmq_msg_t *msg, int property);
 ZMQ_EXPORT int zmq_msg_set (zmq_msg_t *msg, int property, int optval);
-ZMQ_EXPORT const char *zmq_msg_gets (zmq_msg_t *msg, const char *property);
 ZMQ_EXPORT zmq_id zmq_msg_id (zmq_msg_t *msg);
 ZMQ_EXPORT void zmq_msg_set_id(zmq_msg_t *msg, size_t len, void *data);
 ZMQ_EXPORT void zmq_msg_set_id_s(zmq_msg_t *msg, zmq_id id);
