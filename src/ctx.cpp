@@ -526,14 +526,7 @@ void zmq::ctx_t::connect_inproc_sockets (zmq::socket_base_t *bind_socket_,
     if (pending_connection_.endpoint.options.rcvhwm != 0 && bind_options.sndhwm != 0)
         rcvhwm = pending_connection_.endpoint.options.rcvhwm + bind_options.sndhwm;
 
-    bool conflate = pending_connection_.endpoint.options.conflate &&
-            (pending_connection_.endpoint.options.type == ZMQ_DEALER ||
-             pending_connection_.endpoint.options.type == ZMQ_PULL ||
-             pending_connection_.endpoint.options.type == ZMQ_PUSH ||
-             pending_connection_.endpoint.options.type == ZMQ_PUB ||
-             pending_connection_.endpoint.options.type == ZMQ_SUB);
-
-    int hwms [2] = {conflate? -1 : sndhwm, conflate? -1 : rcvhwm};
+    int hwms [2] = {sndhwm, rcvhwm};
     pending_connection_.connect_pipe->set_hwms(hwms [1], hwms [0]);
     pending_connection_.bind_pipe->set_hwms(hwms [0], hwms [1]);
 

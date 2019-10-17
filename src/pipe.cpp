@@ -34,36 +34,28 @@
 #include "err.hpp"
 
 #include "ypipe.hpp"
-#include "ypipe_conflate.hpp"
 
 int zmq::pipepair (class object_t *parents_ [2], class pipe_t* pipes_ [2],
-    int hwms_ [2], bool conflate_ [2])
+    int hwms_ [2])
 {
     //   Creates two pipe objects. These objects are connected by two ypipes,
     //   each to pass messages in one direction.
 
     typedef ypipe_t <msg_t, message_pipe_granularity> upipe_normal_t;
-    typedef ypipe_conflate_t <msg_t> upipe_conflate_t;
 
     pipe_t::upipe_t *upipe1;
-    if(conflate_ [0])
-        upipe1 = new (std::nothrow) upipe_conflate_t ();
-    else
-        upipe1 = new (std::nothrow) upipe_normal_t ();
+    upipe1 = new (std::nothrow) upipe_normal_t ();
     alloc_assert (upipe1);
 
     pipe_t::upipe_t *upipe2;
-    if(conflate_ [1])
-        upipe2 = new (std::nothrow) upipe_conflate_t ();
-    else
-        upipe2 = new (std::nothrow) upipe_normal_t ();
+    upipe2 = new(std::nothrow) upipe_normal_t();
     alloc_assert (upipe2);
 
     pipes_ [0] = new (std::nothrow) pipe_t (parents_ [0], upipe1, upipe2,
-        hwms_ [1], hwms_ [0], conflate_ [0]);
+        hwms_ [1], hwms_ [0]);
     alloc_assert (pipes_ [0]);
     pipes_ [1] = new (std::nothrow) pipe_t (parents_ [1], upipe2, upipe1,
-        hwms_ [0], hwms_ [1], conflate_ [1]);
+        hwms_ [0], hwms_ [1]);
     alloc_assert (pipes_ [1]);
 
     pipes_ [0]->set_peer (pipes_ [1]);
@@ -73,7 +65,7 @@ int zmq::pipepair (class object_t *parents_ [2], class pipe_t* pipes_ [2],
 }
 
 zmq::pipe_t::pipe_t (object_t *parent_, upipe_t *inpipe_, upipe_t *outpipe_,
-      int inhwm_, int outhwm_, bool conflate_) :
+      int inhwm_, int outhwm_) :
     object_t (parent_),
     recv(NULL),
     recv_arg(NULL),
@@ -89,8 +81,7 @@ zmq::pipe_t::pipe_t (object_t *parent_, upipe_t *inpipe_, upipe_t *outpipe_,
     peer (NULL),
     sink (NULL),
     state (active),
-    delay (true),
-    conflate (conflate_)
+    delay (true)
 {
 }
 
@@ -350,12 +341,10 @@ void zmq::pipe_t::process_pipe_term_ack ()
     //  hand because msg_t doesn't have automatic destructor. Then deallocate
     //  the ypipe itself.
 
-    if (!conflate) {
-        msg_t msg;
-        while (inpipe->read (&msg)) {
-            int rc = msg.close ();
-            errno_assert (rc == 0);
-        }
+    msg_t msg;
+    while (inpipe->read(&msg)) {
+        int rc = msg.close();
+        errno_assert (rc == 0);
     }
 
     delete inpipe;
@@ -494,12 +483,8 @@ void zmq::pipe_t::hiccup ()
     inpipe = NULL;
 
     //  Create new inpipe.
-    if (conflate)
-        inpipe = new (std::nothrow)
-            ypipe_conflate_t <msg_t> ();
-    else
-        inpipe = new (std::nothrow)
-            ypipe_t <msg_t, message_pipe_granularity> ();
+    inpipe = new(std::nothrow)
+        ypipe_t<msg_t, message_pipe_granularity>();
 
     alloc_assert (inpipe);
     in_active = true;
