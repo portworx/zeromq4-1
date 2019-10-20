@@ -45,12 +45,7 @@ namespace zmq
     class pipe_t;
 
     //  Create a pipepair for bi-directional transfer of messages.
-    //  First HWM is for messages passed from first pipe to the second pipe.
-    //  Second HWM is for messages passed from second pipe to the first pipe.
-    //  Delay specifies how the pipe behaves when the peer terminates. If true
-    //  pipe receives all the pending messages before terminating, otherwise it
-    //  terminates straight away.
-    int pipepair (zmq::object_t *parents_ [2], zmq::pipe_t* pipes_ [2], int hwms_ [2]);
+    int pipepair (zmq::object_t *parents_ [2], zmq::pipe_t* pipes_ [2]);
 
     struct i_pipe_events
     {
@@ -73,8 +68,7 @@ namespace zmq
         public array_item_t <3>
     {
         //  This allows pipepair to create pipe objects.
-        friend int pipepair (zmq::object_t *parents_ [2], zmq::pipe_t* pipes_ [2],
-            int hwms_ [2]);
+        friend int pipepair (zmq::object_t *parents_ [2], zmq::pipe_t* pipes_ [2]);
 
     public:
         void (*recv)(void *arg, zmq_msg_t *msg_);
@@ -121,11 +115,6 @@ namespace zmq
         //  before actual shutdown.
         void terminate (bool delay_);
 
-        // set the high water marks.
-        void set_hwms (int inhwm_, int outhwm_);
-
-        // check HWM
-        bool check_hwm () const;
     private:
 
         //  Type of the underlying lock-free pipe.
@@ -143,8 +132,7 @@ namespace zmq
 
         //  Constructor is private. Pipe can only be created using
         //  pipepair function.
-        pipe_t (object_t *parent_, upipe_t *inpipe_, upipe_t *outpipe_,
-            int inhwm_, int outhwm_);
+        pipe_t (object_t *parent_, upipe_t *inpipe_, upipe_t *outpipe_);
 
         //  Pipepair uses this function to let us know about
         //  the peer pipe object.
@@ -160,16 +148,6 @@ namespace zmq
         //  Can the pipe be read from / written to?
         bool in_active;
         bool out_active;
-
-        //  High watermark for the outbound pipe.
-        int hwm;
-
-        //  Low watermark for the inbound pipe.
-        int lwm;
-
-        //  Number of messages read and written so far.
-        uint64_t msgs_read;
-        uint64_t msgs_written;
 
         //  Last received peer's msgs_read. The actual number in the peer
         //  can be higher at the moment.
@@ -211,9 +189,6 @@ namespace zmq
 
         //  Returns true if the message is delimiter; false otherwise.
         static bool is_delimiter (const msg_t &msg_);
-
-        //  Computes appropriate low watermark from the given high watermark.
-        static int compute_lwm (int hwm_);
 
         //  Disable copying.
         pipe_t (const pipe_t&);

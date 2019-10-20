@@ -457,26 +457,11 @@ int zmq::socket_base_t::connect (const char *addr_)
         //  Find the peer endpoint.
         endpoint_t peer = find_endpoint (addr_);
 
-        // The total HWM for an inproc connection should be the sum of
-        // the binder's HWM and the connector's HWM.
-        int sndhwm = 0;
-        if (peer.socket == NULL)
-            sndhwm = options.sndhwm;
-        else if (options.sndhwm != 0 && peer.options.rcvhwm != 0)
-            sndhwm = options.sndhwm + peer.options.rcvhwm;
-        int rcvhwm = 0;
-        if (peer.socket == NULL)
-            rcvhwm = options.rcvhwm;
-        else
-        if (options.rcvhwm != 0 && peer.options.sndhwm != 0)
-            rcvhwm = options.rcvhwm + peer.options.sndhwm;
-
         //  Create a bi-directional pipe to connect the peers.
         object_t *parents [2] = {this, peer.socket == NULL ? this : peer.socket};
         pipe_t *new_pipes [2] = {NULL, NULL};
 
-        int hwms [2] = {sndhwm, rcvhwm};
-        int rc = pipepair (parents, new_pipes, hwms);
+        int rc = pipepair (parents, new_pipes);
         errno_assert (rc == 0);
 
         //  Attach local end of the pipe to this socket object.
@@ -651,8 +636,7 @@ int zmq::socket_base_t::connect (const char *addr_)
         object_t *parents [2] = {this, session};
         pipe_t *new_pipes [2] = {NULL, NULL};
 
-        int hwms [2] = {options.sndhwm, options.rcvhwm};
-        rc = pipepair (parents, new_pipes, hwms);
+        rc = pipepair (parents, new_pipes);
         errno_assert (rc == 0);
 
         //  Attach local end of the pipe to the socket object.

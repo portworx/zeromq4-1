@@ -516,19 +516,6 @@ void zmq::ctx_t::connect_inproc_sockets (zmq::socket_base_t *bind_socket_,
         msg.close ();
     }
 
-
-    int sndhwm = 0;
-    if (pending_connection_.endpoint.options.sndhwm != 0 && bind_options.rcvhwm != 0)
-        sndhwm = pending_connection_.endpoint.options.sndhwm + bind_options.rcvhwm;
-
-    int rcvhwm = 0;
-    if (pending_connection_.endpoint.options.rcvhwm != 0 && bind_options.sndhwm != 0)
-        rcvhwm = pending_connection_.endpoint.options.rcvhwm + bind_options.sndhwm;
-
-    int hwms [2] = {sndhwm, rcvhwm};
-    pending_connection_.connect_pipe->set_hwms(hwms [1], hwms [0]);
-    pending_connection_.bind_pipe->set_hwms(hwms [0], hwms [1]);
-
     if (side_ == bind_side) {
         command_t cmd;
         cmd.type = command_t::bind;

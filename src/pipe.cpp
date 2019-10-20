@@ -35,8 +35,7 @@
 
 #include "ypipe.hpp"
 
-int zmq::pipepair (class object_t *parents_ [2], class pipe_t* pipes_ [2],
-    int hwms_ [2])
+int zmq::pipepair (class object_t *parents_ [2], class pipe_t* pipes_ [2])
 {
     //   Creates two pipe objects. These objects are connected by two ypipes,
     //   each to pass messages in one direction.
@@ -51,11 +50,9 @@ int zmq::pipepair (class object_t *parents_ [2], class pipe_t* pipes_ [2],
     upipe2 = new(std::nothrow) upipe_normal_t();
     alloc_assert (upipe2);
 
-    pipes_ [0] = new (std::nothrow) pipe_t (parents_ [0], upipe1, upipe2,
-        hwms_ [1], hwms_ [0]);
+    pipes_ [0] = new (std::nothrow) pipe_t (parents_ [0], upipe1, upipe2);
     alloc_assert (pipes_ [0]);
-    pipes_ [1] = new (std::nothrow) pipe_t (parents_ [1], upipe2, upipe1,
-        hwms_ [0], hwms_ [1]);
+    pipes_ [1] = new (std::nothrow) pipe_t (parents_ [1], upipe2, upipe1);
     alloc_assert (pipes_ [1]);
 
     pipes_ [0]->set_peer (pipes_ [1]);
@@ -64,8 +61,7 @@ int zmq::pipepair (class object_t *parents_ [2], class pipe_t* pipes_ [2],
     return 0;
 }
 
-zmq::pipe_t::pipe_t (object_t *parent_, upipe_t *inpipe_, upipe_t *outpipe_,
-      int inhwm_, int outhwm_) :
+zmq::pipe_t::pipe_t (object_t *parent_, upipe_t *inpipe_, upipe_t *outpipe_) :
     object_t (parent_),
     recv(NULL),
     recv_arg(NULL),
@@ -73,10 +69,6 @@ zmq::pipe_t::pipe_t (object_t *parent_, upipe_t *inpipe_, upipe_t *outpipe_,
     outpipe (outpipe_),
     in_active (true),
     out_active (true),
-    hwm (outhwm_),
-    lwm (compute_lwm (inhwm_)),
-    msgs_read (0),
-    msgs_written (0),
     peers_msgs_read (0),
     peer (NULL),
     sink (NULL),
@@ -157,42 +149,21 @@ bool zmq::pipe_t::read (msg_t *msg_)
         return false;
     }
 
-    if (!(msg_->flags () & msg_t::more) && !msg_->is_identity ())
-        msgs_read++;
-
-    if (lwm > 0 && msgs_read % lwm == 0)
-        send_activate_write (peer, msgs_read);
-
     return true;
 }
 
 bool zmq::pipe_t::check_write ()
 {
-    if (unlikely (!out_active || state != active))
-        return false;
-
-    bool full = hwm > 0 && msgs_written - peers_msgs_read == uint64_t (hwm);
-
-    if (unlikely (full)) {
-        out_active = false;
-        return false;
-    }
-
-    return true;
+    return out_active & (state == active);
 }
 
 bool zmq::pipe_t::write (msg_t *msg_)
 {
-    assert(!msg_->is_empty());
-
-	if (unlikely (!check_write ()))
+    if (unlikely (!check_write()))
         return false;
 
     bool more = msg_->flags () & msg_t::more ? true : false;
-    const bool is_identity = msg_->is_identity ();
     outpipe->write (*msg_, more);
-    if (!more && !is_identity)
-        msgs_written++;
 
     return true;
 }
@@ -246,8 +217,6 @@ void zmq::pipe_t::process_hiccup (void *pipe_)
     outpipe->flush ();
     msg_t msg;
     while (outpipe->read (&msg)) {
-       if (!(msg.flags () & msg_t::more))
-            msgs_written--;
        msg.close ();
     }
     delete outpipe;
@@ -414,34 +383,6 @@ bool zmq::pipe_t::is_delimiter (const msg_t &msg_)
     return msg_.is_delimiter ();
 }
 
-int zmq::pipe_t::compute_lwm (int hwm_)
-{
-    //  Compute the low water mark. Following point should be taken
-    //  into consideration:
-    //
-    //  1. LWM has to be less than HWM.
-    //  2. LWM cannot be set to very low value (such as zero) as after filling
-    //     the queue it would start to refill only after all the messages are
-    //     read from it and thus unnecessarily hold the progress back.
-    //  3. LWM cannot be set to very high value (such as HWM-1) as it would
-    //     result in lock-step filling of the queue - if a single message is
-    //     read from a full queue, writer thread is resumed to write exactly one
-    //     message to the queue and go back to sleep immediately. This would
-    //     result in low performance.
-    //
-    //  Given the 3. it would be good to keep HWM and LWM as far apart as
-    //  possible to reduce the thread switching overhead to almost zero,
-    //  say HWM-LWM should be max_wm_delta.
-    //
-    //  That done, we still we have to account for the cases where
-    //  HWM < max_wm_delta thus driving LWM to negative numbers.
-    //  Let's make LWM 1/2 of HWM in such cases.
-    int result = (hwm_ > max_wm_delta * 2) ?
-        hwm_ - max_wm_delta : (hwm_ + 1) / 2;
-
-    return result;
-}
-
 void zmq::pipe_t::process_delimiter ()
 {
     zmq_assert (state == active
@@ -477,14 +418,3 @@ void zmq::pipe_t::hiccup ()
     send_hiccup (peer, (void*) inpipe);
 }
 
-void zmq::pipe_t::set_hwms (int inhwm_, int outhwm_)
-{
-    lwm = compute_lwm (inhwm_);
-    hwm = outhwm_;
-}
-
-bool zmq::pipe_t::check_hwm () const
-{
-    bool full = hwm > 0 && msgs_written - peers_msgs_read >= uint64_t (hwm - 1);
-    return( !full );
-}
