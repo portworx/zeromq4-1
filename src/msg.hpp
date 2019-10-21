@@ -32,6 +32,8 @@
 
 #include <stddef.h>
 #include <stdio.h>
+#include <mutex>
+#include <vector>
 
 #include "config.hpp"
 #include "atomic_counter.hpp"
@@ -74,6 +76,7 @@ namespace zmq
             command = 2,        //  Command frame (see ZMTP spec)
 	    malloced = 4,	//  Message structure was malloced
 	    delimiter = 8,      //  Message is a delimiter
+	    pool_alloc = 16,    // memory was allocated from pool
             credential = 32,
             identity = 64,
             shared = 128
@@ -194,8 +197,57 @@ namespace zmq
                 size_t hdr_size() const { return size - content->size; }
             } lmsg;
         } u;
+
+        // allocate memory from pool or global malloc depending on size
+        void alloc_memory(size_t alloc_size);
     };
 
+    class alignas(64) global_buf_pool {
+    public:
+        global_buf_pool(size_t struct_size);
+        ~global_buf_pool();
+    private:
+        friend class buf_pool;
+
+        std::mutex lock;
+        size_t struct_size;
+        std::vector<void *> list;
+        std::vector<void *> blocks;
+    };
+
+    class buf_pool {
+    public:
+        buf_pool(global_buf_pool &global_list, size_t block_size);
+
+        ~buf_pool();
+
+        void *alloc();
+
+        void free(void *obj);
+    private:
+        void *alloc_slow();
+
+        std::vector<void *> list;
+        size_t block_size;
+        global_buf_pool &global_list;
+    };
+
+    constexpr size_t buf_pool_max_alloc = 17 * 64;
+
+    namespace detail {
+
+    extern thread_local buf_pool local_pool;
+
+    }
+    inline void *alloc_buf()
+    {
+        return detail::local_pool.alloc();
+    }
+
+    inline void free_buf(void *obj)
+    {
+        detail::local_pool.free(obj);
+    }
 }
 
 #endif

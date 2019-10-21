@@ -30,13 +30,16 @@
 #ifndef __ZMQ_LIKELY_HPP_INCLUDED__
 #define __ZMQ_LIKELY_HPP_INCLUDED__
 
-#if defined __GNUC__
+#if defined(__GNUC__)
+#if !defined(likely)
 #define likely(x) __builtin_expect ((x), 1)
 #define unlikely(x) __builtin_expect ((x), 0)
+#endif
 #else
+#if !defined(likely)
 #define likely(x) (x)
 #define unlikely(x) (x)
 #endif
-
+#endif
 
 #endif

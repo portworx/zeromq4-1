@@ -76,10 +76,21 @@ void zmq::msg_t::init ()
     init_vsm();
 }
 
+void zmq::msg_t::alloc_memory(size_t alloc_size)
+{
+    if (alloc_size <= buf_pool_max_alloc) {
+        u.lmsg.content = static_cast<content_t*>(alloc_buf());
+        u.lmsg.flags |= pool_alloc;
+    } else {
+        u.lmsg.content = static_cast<content_t*>(malloc(alloc_size));
+    }
+}
+
 void zmq::msg_t::init_size (size_t size_)
 {
     init_lsm(size_);
-    u.lmsg.content = (content_t *) malloc(sizeof(content_t) + sizeof(iovec) + size_);
+
+    alloc_memory(sizeof(content_t) + sizeof(iovec) + size_);
 
     u.lmsg.content->data_iov = (iovec *) (u.lmsg.content + 1);
     u.lmsg.content->iovcnt = 1;
@@ -105,7 +116,8 @@ void zmq::msg_t::init_data (void *data_, size_t size_, msg_free_fn *ffn_,
     }
 
     init_lsm(size_);
-    u.lmsg.content = (content_t *) malloc(sizeof(content_t) + sizeof(iovec));
+
+    alloc_memory(sizeof(content_t) + sizeof(iovec));
 
     u.lmsg.content->data_iov = (iovec *) (u.lmsg.content + 1);
     u.lmsg.content->iovcnt = 1;
@@ -137,7 +149,9 @@ void zmq::msg_t::init_iov(iovec *iov, int iovcnt, size_t size, msg_free_fn *ffn_
 {
 	zmq_assert(iov != NULL && iovcnt > 0 && ffn_ != NULL);
 	init_lsm(size);
-	u.lmsg.content = (content_t*) malloc (sizeof (content_t));
+
+	alloc_memory(sizeof (content_t));
+
 	u.lmsg.content->data_iov = iov;
 	u.lmsg.content->iovcnt = iovcnt;
 	u.lmsg.content->size = size;
@@ -178,19 +192,31 @@ void zmq::msg_t::close()
     //  Make the message invalid.
     u.base.type = 0;
 
+    // Save a copy of fields since message can be destroyed once free function is called.
+    auto flags = u.lmsg.flags;
+    auto content = u.lmsg.content;
+
     //  If the content is not shared, or if it is shared and the reference
     //  count has dropped to zero, deallocate it.
-    if (!(u.lmsg.flags & msg_t::shared) || !u.lmsg.content->refcnt.sub(1)) {
+    if (!(flags & msg_t::shared) || !content->refcnt.sub(1)) {
 
         //  We used "placement new" operator to initialize the reference
         //  counter so we call the destructor explicitly now.
-        u.lmsg.content->refcnt.~atomic_counter_t();
-        bool free_content = !(u.lmsg.flags & malloced);
-        if (u.lmsg.content->ffn)
-            u.lmsg.content->ffn(u.lmsg.content->data_iov->iov_base,
-                      u.lmsg.content->hint);
-        if (free_content)
-            free(u.lmsg.content);
+        content->refcnt.~atomic_counter_t();
+        if (content->ffn)
+            content->ffn(content->data_iov->iov_base, content->hint);
+
+        switch (flags & (malloced | pool_alloc)) {
+        case pool_alloc:
+            free_buf(content);
+            break;
+        case 0:
+            ::free(content);
+            break;
+        default:
+            // message will be freed by caller
+            break;
+        }
     }
 }
 
@@ -324,3 +350,84 @@ void zmq::msg_t::add_to_iovec_buf(zmq::iovec_buf &buf)
     buf.size += u.lmsg.size;
 }
 
+zmq::global_buf_pool::global_buf_pool(size_t struct_size) : struct_size(struct_size)
+{
+}
+
+zmq::global_buf_pool::~global_buf_pool()
+{
+    for (auto &v : blocks)
+        ::operator delete(v);
+}
+
+zmq::buf_pool::buf_pool(zmq::global_buf_pool &global_list, size_t block_size) :
+    block_size(block_size), global_list(global_list)
+{
+}
+
+zmq::buf_pool::~buf_pool()
+{
+    std::lock_guard<std::mutex> lock(global_list.lock);
+    global_list.list.insert(global_list.list.end(), list.begin(), list.end());
+}
+
+void *zmq::buf_pool::alloc_slow()
+{
+    std::unique_lock<std::mutex> lock(global_list.lock);
+    if (global_list.list.size() < block_size) {
+        lock.unlock();
+        auto mem = reinterpret_cast<char*>(
+            ::operator new(global_list.struct_size * block_size));
+        lock.lock();
+        global_list.blocks.push_back(mem);
+        lock.unlock();
+        for (auto i = 0ul; i < block_size; ++i)
+            list.push_back(mem + i * global_list.struct_size);
+    } else {
+        auto end = global_list.list.end();
+        auto beg = end - block_size;
+        list.insert(list.end(), beg, end);
+        global_list.list.erase(beg, end);
+        lock.unlock();
+    }
+    return alloc();
+}
+
+void *zmq::buf_pool::alloc()
+{
+#if !defined(__SANITIZE_ADDRESS__)
+    if (!list.empty()) {
+        auto val = list.back();
+        list.pop_back();
+        return val;
+    } else {
+        return alloc_slow();
+    }
+#else
+    return malloc(global_list.struct_size);
+#endif
+}
+
+void zmq::buf_pool::free(void *obj)
+{
+#if !defined(__SANITIZE_ADDRESS__)
+    list.push_back(obj);
+    if (list.size() == block_size * 2) {
+        std::lock_guard<std::mutex> lock(global_list.lock);
+        auto end = list.end();
+        auto beg = end - block_size;
+        global_list.list.insert(global_list.list.end(), beg, end);
+        list.erase(beg, end);
+    }
+#else
+    ::free(obj);
+#endif
+}
+
+namespace {
+
+zmq::global_buf_pool global_free_list(zmq::buf_pool_max_alloc);
+
+}
+
+thread_local zmq::buf_pool zmq::detail::local_pool(global_free_list, 1024);
