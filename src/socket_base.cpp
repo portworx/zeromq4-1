@@ -488,8 +488,7 @@ int zmq::socket_base_t::connect (const char *addr_)
             //  we always send our identity and drop it later if
             //  the peer doesn't expect it.
             msg_t id;
-            rc = id.init_size (options.identity_size);
-            errno_assert (rc == 0);
+            id.init_size (options.identity_size);
             memcpy (id.data (), options.identity, options.identity_size);
             id.set_flags (msg_t::identity);
             bool written = new_pipes [0]->write (&id);
@@ -503,8 +502,7 @@ int zmq::socket_base_t::connect (const char *addr_)
             //  If required, send the identity of the local socket to the peer.
             if (peer.options.recv_identity) {
                 msg_t id;
-                rc = id.init_size (options.identity_size);
-                errno_assert (rc == 0);
+                id.init_size (options.identity_size);
                 memcpy (id.data (), options.identity, options.identity_size);
                 id.set_flags (msg_t::identity);
                 bool written = new_pipes [0]->write (&id);
@@ -515,8 +513,7 @@ int zmq::socket_base_t::connect (const char *addr_)
             //  If required, send the identity of the peer to the local socket.
             if (options.recv_identity) {
                 msg_t id;
-                rc = id.init_size (peer.options.identity_size);
-                errno_assert (rc == 0);
+                id.init_size (peer.options.identity_size);
                 memcpy (id.data (), peer.options.identity, peer.options.identity_size);
                 id.set_flags (msg_t::identity);
                 bool written = new_pipes [1]->write (&id);

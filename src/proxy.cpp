@@ -56,13 +56,9 @@ int capture(
     //  Copy message to capture socket if any
     if (capture_) {
         zmq::msg_t ctrl;
-        int rc = ctrl.init ();
-        if (unlikely (rc < 0))
-            return -1;
-        rc = ctrl.copy (msg_);
-        if (unlikely (rc < 0))
-            return -1;
-        rc = capture_->send (&ctrl, more_? ZMQ_SNDMORE: 0);
+        ctrl.init ();
+        ctrl.copy (msg_);
+        int rc = capture_->send (&ctrl, more_? ZMQ_SNDMORE: 0);
         if (unlikely (rc < 0))
             return -1;
     }
@@ -107,10 +103,9 @@ int zmq::proxy (
     class socket_base_t *capture_,
     class socket_base_t *control_)
 {
+    int rc;
     msg_t msg;
-    int rc = msg.init ();
-    if (rc != 0)
-        return -1;
+    msg.init ();
 
     //  The algorithm below assumes ratio of requests and replies processed
     //  under full load to be 1:1.

@@ -513,8 +513,7 @@ void zmq::ctx_t::connect_inproc_sockets (zmq::socket_base_t *bind_socket_,
         msg_t msg;
         const bool ok = pending_connection_.bind_pipe->read (&msg);
         zmq_assert (ok);
-        const int rc = msg.close ();
-        errno_assert (rc == 0);
+        msg.close ();
     }
 
 
@@ -548,8 +547,7 @@ void zmq::ctx_t::connect_inproc_sockets (zmq::socket_base_t *bind_socket_,
     if (pending_connection_.endpoint.options.recv_identity &&
             pending_connection_.endpoint.socket->check_tag ()) {
         msg_t id;
-        int rc = id.init_size (bind_options.identity_size);
-        errno_assert (rc == 0);
+        id.init_size (bind_options.identity_size);
         memcpy (id.data (), bind_options.identity, bind_options.identity_size);
         id.set_flags (msg_t::identity);
         bool written = pending_connection_.bind_pipe->write (&id);

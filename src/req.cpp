@@ -74,21 +74,19 @@ int zmq::req_t::xsend (msg_t *msg_)
             request_id++;
 
             msg_t id;
-            int rc = id.init_data (&request_id, sizeof (request_id), NULL, NULL);
-            errno_assert (rc == 0);
+            id.init_data (&request_id, sizeof (request_id), NULL, NULL);
             id.set_flags (msg_t::more);
 
-            rc = dealer_t::sendpipe (&id, &reply_pipe);
+            int rc = dealer_t::sendpipe (&id, &reply_pipe);
             if (rc != 0)
                 return -1;
         }
 
         msg_t bottom;
-        int rc = bottom.init_size (0);
-        errno_assert (rc == 0);
+        bottom.init_size (0);
         bottom.set_flags (msg_t::more);
 
-        rc = dealer_t::sendpipe (&bottom, &reply_pipe);
+        int rc = dealer_t::sendpipe (&bottom, &reply_pipe);
         if (rc != 0)
             return -1;
         zmq_assert (reply_pipe);
@@ -102,8 +100,7 @@ int zmq::req_t::xsend (msg_t *msg_)
         //   An hour later REQ sends a request to B. B's old reply is used.
         msg_t drop;
         while (true) {
-            rc = drop.init ();
-            errno_assert (rc == 0);
+            drop.init ();
             rc = dealer_t::xrecv (&drop);
             if (rc != 0)
                 break;

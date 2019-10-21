@@ -114,10 +114,8 @@ int zmq::curve_client_t::process_handshake_command (msg_t *msg_)
     }
 
     if (rc == 0) {
-        rc = msg_->close ();
-        errno_assert (rc == 0);
-        rc = msg_->init ();
-        errno_assert (rc == 0);
+        msg_->close ();
+        msg_->init ();
     }
 
     return rc;
@@ -152,11 +150,9 @@ int zmq::curve_client_t::encode (msg_t *msg_)
                                  mlen, message_nonce, cn_precom);
     zmq_assert (rc == 0);
 
-    rc = msg_->close ();
-    zmq_assert (rc == 0);
+    msg_->close ();
 
-    rc = msg_->init_size (16 + mlen - crypto_box_BOXZEROBYTES);
-    zmq_assert (rc == 0);
+    msg_->init_size (16 + mlen - crypto_box_BOXZEROBYTES);
 
     uint8_t *message = static_cast <uint8_t *> (msg_->data ());
 
@@ -213,11 +209,9 @@ int zmq::curve_client_t::decode (msg_t *msg_)
     int rc = crypto_box_open_afternm (message_plaintext, message_box,
                                       clen, message_nonce, cn_precom);
     if (rc == 0) {
-        rc = msg_->close ();
-        zmq_assert (rc == 0);
+        msg_->close ();
 
-        rc = msg_->init_size (clen - 1 - crypto_box_ZEROBYTES);
-        zmq_assert (rc == 0);
+        msg_->init_size (clen - 1 - crypto_box_ZEROBYTES);
 
         const uint8_t flags = message_plaintext [crypto_box_ZEROBYTES];
         if (flags & 0x01)
@@ -266,8 +260,7 @@ int zmq::curve_client_t::produce_hello (msg_t *msg_)
     if (rc == -1)
         return -1;
 
-    rc = msg_->init_size (200);
-    errno_assert (rc == 0);
+    msg_->init_size (200);
     uint8_t *hello = static_cast <uint8_t *> (msg_->data ());
 
     memcpy (hello, "\x05HELLO", 6);
@@ -383,8 +376,7 @@ int zmq::curve_client_t::produce_initiate (msg_t *msg_)
     if (rc == -1)
         return -1;
 
-    rc = msg_->init_size (113 + mlen - crypto_box_BOXZEROBYTES);
-    errno_assert (rc == 0);
+    msg_->init_size (113 + mlen - crypto_box_BOXZEROBYTES);
 
     uint8_t *initiate = static_cast <uint8_t *> (msg_->data ());
 

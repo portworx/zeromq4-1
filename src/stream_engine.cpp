@@ -98,8 +98,7 @@ zmq::stream_engine_t::stream_engine_t (fd_t fd_, const options_t &options_,
     socket (NULL)
 {
     memset(&id_, 0, sizeof(id_));
-    int rc = tx_msg.init ();
-    errno_assert (rc == 0);
+    tx_msg.init ();
 
     //  Put the socket into non-blocking mode.
     unblock_socket (s);
@@ -159,8 +158,7 @@ zmq::stream_engine_t::~stream_engine_t ()
         s = retired_fd;
     }
 
-    int rc = tx_msg.close ();
-    errno_assert (rc == 0);
+    tx_msg.close ();
 
     //  Drop reference to metadata and destroy it if we are
     //  the only user.
@@ -727,8 +725,7 @@ bool zmq::stream_engine_t::handshake ()
 
 int zmq::stream_engine_t::identity_msg (msg_t *msg_)
 {
-    int rc = msg_->init_size (options.identity_size);
-    errno_assert (rc == 0);
+    msg_->init_size (options.identity_size);
     if (options.identity_size > 0)
         memcpy (msg_->data (), options.identity, options.identity_size);
     next_msg = &stream_engine_t::pull_msg_from_session;
@@ -747,10 +744,8 @@ int zmq::stream_engine_t::process_identity_msg (msg_t *msg_)
         errno_assert (rc == 0);
     }
     else {
-        int rc = msg_->close ();
-        errno_assert (rc == 0);
-        rc = msg_->init ();
-        errno_assert (rc == 0);
+        msg_->close ();
+        msg_->init ();
     }
 
     if (subscription_required)
@@ -787,11 +782,9 @@ int zmq::stream_engine_t::process_handshake_command (msg_t *msg_)
     zmq_assert (mechanism != NULL);
     const int rc = mechanism->process_handshake_command (msg_);
     if (rc == 0) {
-	    int rc = msg_->close();
-	    errno_assert (rc == 0);
+	    msg_->close();
 	    if (!options.has_decoder_ops) {
-		    rc = msg_->init();
-		    errno_assert (rc == 0);
+		    msg_->init();
 	    }
         if (mechanism->status () == mechanism_t::ready)
             mechanism_ready ();
@@ -832,6 +825,7 @@ void zmq::stream_engine_t::mechanism_ready ()
         }
 
         const int rc = session->push_msg (&identity);
+        identity.close();
         if (rc == -1 && errno == EAGAIN) {
             // If the write is failing at this stage with
             // an EAGAIN the pipe must be being shut down,
@@ -890,14 +884,12 @@ int zmq::stream_engine_t::write_credential (msg_t *msg_)
     const blob_t credential = mechanism->get_user_id ();
     if (credential.size () > 0) {
         msg_t msg;
-        int rc = msg.init_size (credential.size ());
-        zmq_assert (rc == 0);
+        msg.init_size (credential.size ());
         memcpy (msg.data (), credential.data (), credential.size ());
         msg.set_flags (msg_t::credential);
-        rc = session->push_msg (&msg);
+        int rc = session->push_msg (&msg);
         if (rc == -1) {
-            rc = msg.close ();
-            errno_assert (rc == 0);
+            msg.close ();
             return -1;
         }
     }
@@ -954,10 +946,9 @@ int zmq::stream_engine_t::write_subscription_msg (msg_t *msg_)
 
     //  Inject the subscription message, so that also
     //  ZMQ 2.x peers receive published messages.
-    int rc = subscription.init_size (1);
-    errno_assert (rc == 0);
+    subscription.init_size (1);
     *(unsigned char*) subscription.data () = 1;
-    rc = session->push_msg (&subscription);
+    int rc = session->push_msg (&subscription);
     if (rc == -1)
        return -1;
 

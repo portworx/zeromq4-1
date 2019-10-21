@@ -168,14 +168,11 @@ int main (void)
     // this particular data.
     s_recv_seq (req, "GHI", SEQ_END);
 
-    rc = zmq_msg_close (&msg);
-    assert (rc == 0);
+    zmq_msg_close (&msg);
 
-    rc = zmq_msg_close (&peer_id_msg);
-    assert (rc == 0);
+    zmq_msg_close (&peer_id_msg);
 
-    rc = zmq_msg_close (&req_id_msg);
-    assert (rc == 0);
+    zmq_msg_close (&req_id_msg);
 
     close_zero_linger (req);
     close_zero_linger (router);

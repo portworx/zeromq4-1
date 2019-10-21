@@ -129,10 +129,8 @@ int zmq::stream_t::xsend (msg_t *msg_)
         //  Expect one more message frame.
         more_out = true;
 
-        int rc = msg_->close ();
-        errno_assert (rc == 0);
-        rc = msg_->init ();
-        errno_assert (rc == 0);
+        msg_->close ();
+        msg_->init ();
         return 0;
     }
 
@@ -150,10 +148,8 @@ int zmq::stream_t::xsend (msg_t *msg_)
         // Pending messages in the pipe will be dropped (on receiving term- ack)
         if (msg_->size () == 0) {
             current_out->terminate (false);
-            int rc = msg_->close ();
-            errno_assert (rc == 0);
-            rc = msg_->init ();
-            errno_assert (rc == 0);
+            msg_->close ();
+            msg_->init ();
             current_out = NULL;
             return 0;
         }
@@ -163,13 +159,11 @@ int zmq::stream_t::xsend (msg_t *msg_)
         current_out = NULL;
     }
     else {
-        int rc = msg_->close ();
-        errno_assert (rc == 0);
+        msg_->close ();
     }
 
     //  Detach the message from the data buffer.
-    int rc = msg_->init ();
-    errno_assert (rc == 0);
+    msg_->init ();
 
     return 0;
 }
@@ -195,13 +189,11 @@ int zmq::stream_t::xrecv (msg_t *msg_)
 {
     if (prefetched) {
         if (!identity_sent) {
-            int rc = msg_->move (prefetched_id);
-            errno_assert (rc == 0);
+            msg_->move (prefetched_id);
             identity_sent = true;
         }
         else {
-            int rc = msg_->move (prefetched_msg);
-            errno_assert (rc == 0);
+            msg_->move (prefetched_msg);
             prefetched = false;
         }
         return 0;
@@ -219,8 +211,7 @@ int zmq::stream_t::xrecv (msg_t *msg_)
     //  Rather than sendig this frame, we keep it in prefetched
     //  buffer and send a frame with peer's ID.
     blob_t identity = pipe->get_identity ();
-    rc = msg_->init_size (identity.size ());
-    errno_assert (rc == 0);
+    msg_->init_size (identity.size ());
 
     memcpy (msg_->data (), identity.data (), identity.size ());
     msg_->set_flags (msg_t::more);
@@ -248,8 +239,7 @@ bool zmq::stream_t::xhas_in ()
     zmq_assert ((prefetched_msg.flags () & msg_t::more) == 0);
 
     blob_t identity = pipe->get_identity ();
-    rc = prefetched_id.init_size (identity.size ());
-    errno_assert (rc == 0);
+    prefetched_id.init_size (identity.size ());
 
     memcpy (prefetched_id.data (), identity.data (), identity.size ());
     prefetched_id.set_flags (msg_t::more);

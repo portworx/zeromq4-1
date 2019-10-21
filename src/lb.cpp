@@ -92,10 +92,8 @@ int zmq::lb_t::sendpipe (msg_t *msg_, pipe_t **pipe_)
         more = msg_->flags () & msg_t::more ? true : false;
         dropping = more;
 
-        int rc = msg_->close ();
-        errno_assert (rc == 0);
-        rc = msg_->init ();
-        errno_assert (rc == 0);
+        msg_->close ();
+        msg_->init ();
         return 0;
     }
 
@@ -130,8 +128,7 @@ int zmq::lb_t::sendpipe (msg_t *msg_, pipe_t **pipe_)
     }
 
     //  Detach the message from the data buffer.
-    int rc = msg_->init ();
-    errno_assert (rc == 0);
+    msg_->init ();
 
     return 0;
 }

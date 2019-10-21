@@ -94,8 +94,7 @@ int zmq::pair_t::xsend (msg_t *msg_)
         pipe->flush ();
 
     //  Detach the original message from the data buffer.
-    int rc = msg_->init ();
-    errno_assert (rc == 0);
+    msg_->init ();
 
     return 0;
 }
@@ -103,14 +102,12 @@ int zmq::pair_t::xsend (msg_t *msg_)
 int zmq::pair_t::xrecv (msg_t *msg_)
 {
     //  Deallocate old content of the message.
-    int rc = msg_->close ();
-    errno_assert (rc == 0);
+    msg_->close ();
 
     if (!pipe || !pipe->read (msg_)) {
 
         //  Initialise the output parameter to be a 0-byte message.
-        rc = msg_->init ();
-        errno_assert (rc == 0);
+        msg_->init ();
 
         errno = EAGAIN;
         return -1;

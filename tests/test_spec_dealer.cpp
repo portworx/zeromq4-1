@@ -69,8 +69,7 @@ void test_round_robin_out (void *ctx)
     for (size_t peer = 0; peer < services; ++peer)
         s_recv_seq (rep [peer], "ABC", SEQ_END);
 
-    rc = zmq_msg_close (&msg);
-    assert (rc == 0);
+    zmq_msg_close (&msg);
 
     close_zero_linger (dealer);
 
@@ -129,8 +128,7 @@ void test_fair_queue_in (void *ctx)
     for (size_t peer = 0; peer < services; ++peer)
         s_recv_seq (receiver, "B", SEQ_END);
 
-    rc = zmq_msg_close (&msg);
-    assert (rc == 0);
+    zmq_msg_close (&msg);
 
     close_zero_linger (receiver);
 
@@ -194,8 +192,7 @@ void test_destroy_queue_on_disconnect (void *ctx)
     assert (rc == -1);
     assert (errno == EAGAIN);
 
-    rc = zmq_msg_close (&msg);
-    assert (rc == 0);
+    zmq_msg_close (&msg);
 
     close_zero_linger (A);
     close_zero_linger (B);

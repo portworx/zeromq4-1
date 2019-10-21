@@ -93,10 +93,8 @@ int zmq::plain_client_t::process_handshake_command (msg_t *msg_)
     }
 
     if (rc == 0) {
-        rc = msg_->close ();
-        errno_assert (rc == 0);
-        rc = msg_->init ();
-        errno_assert (rc == 0);
+        msg_->close ();
+        msg_->init ();
     }
 
     return rc;
@@ -124,8 +122,7 @@ int zmq::plain_client_t::produce_hello (msg_t *msg_) const
     const size_t command_size = 6 + 1 + username.length ()
                                   + 1 + password.length ();
 
-    const int rc = msg_->init_size (command_size);
-    errno_assert (rc == 0);
+    msg_->init_size (command_size);
 
     unsigned char *ptr = static_cast <unsigned char *> (msg_->data ());
     memcpy (ptr, "\x05HELLO", 6);
@@ -180,8 +177,7 @@ int zmq::plain_client_t::produce_initiate (msg_t *msg_) const
             ptr, "Identity", options.identity, options.identity_size);
 
     const size_t command_size = ptr - command_buffer;
-    const int rc = msg_->init_size (command_size);
-    errno_assert (rc == 0);
+    msg_->init_size (command_size);
     memcpy (msg_->data (), command_buffer, command_size);
     free (command_buffer);
 

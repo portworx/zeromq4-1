@@ -121,10 +121,8 @@ int zmq::curve_server_t::process_handshake_command (msg_t *msg_)
             break;
     }
     if (rc == 0) {
-        rc = msg_->close ();
-        errno_assert (rc == 0);
-        rc = msg_->init ();
-        errno_assert (rc == 0);
+        msg_->close ();
+        msg_->init ();
     }
     return rc;
 }
@@ -158,11 +156,9 @@ int zmq::curve_server_t::encode (msg_t *msg_)
                                  mlen, message_nonce, cn_precom);
     zmq_assert (rc == 0);
 
-    rc = msg_->close ();
-    zmq_assert (rc == 0);
+    msg_->close ();
 
-    rc = msg_->init_size (16 + mlen - crypto_box_BOXZEROBYTES);
-    zmq_assert (rc == 0);
+    msg_->init_size (16 + mlen - crypto_box_BOXZEROBYTES);
 
     uint8_t *message = static_cast <uint8_t *> (msg_->data ());
 
@@ -223,11 +219,9 @@ int zmq::curve_server_t::decode (msg_t *msg_)
     int rc = crypto_box_open_afternm (message_plaintext, message_box,
                                       clen, message_nonce, cn_precom);
     if (rc == 0) {
-        rc = msg_->close ();
-        zmq_assert (rc == 0);
+        msg_->close ();
 
-        rc = msg_->init_size (clen - 1 - crypto_box_ZEROBYTES);
-        zmq_assert (rc == 0);
+        msg_->init_size (clen - 1 - crypto_box_ZEROBYTES);
 
         const uint8_t flags = message_plaintext [crypto_box_ZEROBYTES];
         if (flags & 0x01)
@@ -379,8 +373,7 @@ int zmq::curve_server_t::produce_welcome (msg_t *msg_)
     if (rc == -1)
         return -1;
 
-    rc = msg_->init_size (168);
-    errno_assert (rc == 0);
+    msg_->init_size (168);
 
     uint8_t * const welcome = static_cast <uint8_t *> (msg_->data ());
     memcpy (welcome, "\x07WELCOME", 8);
@@ -549,8 +542,7 @@ int zmq::curve_server_t::produce_ready (msg_t *msg_)
                                  mlen, ready_nonce, cn_precom);
     zmq_assert (rc == 0);
 
-    rc = msg_->init_size (14 + mlen - crypto_box_BOXZEROBYTES);
-    errno_assert (rc == 0);
+    msg_->init_size (14 + mlen - crypto_box_BOXZEROBYTES);
 
     uint8_t *ready = static_cast <uint8_t *> (msg_->data ());
 
@@ -569,8 +561,7 @@ int zmq::curve_server_t::produce_ready (msg_t *msg_)
 int zmq::curve_server_t::produce_error (msg_t *msg_) const
 {
     zmq_assert (status_code.length () == 3);
-    const int rc = msg_->init_size (6 + 1 + status_code.length ());
-    zmq_assert (rc == 0);
+    msg_->init_size (6 + 1 + status_code.length ());
     char *msg_data = static_cast <char *> (msg_->data ());
     memcpy (msg_data, "\5ERROR", 6);
     msg_data [6] = sizeof status_code;
@@ -584,63 +575,55 @@ void zmq::curve_server_t::send_zap_request (const uint8_t *key)
     msg_t msg;
 
     //  Address delimiter frame
-    rc = msg.init ();
-    errno_assert (rc == 0);
+    msg.init ();
     msg.set_flags (msg_t::more);
     rc = session->write_zap_msg (&msg);
     errno_assert (rc == 0);
 
     //  Version frame
-    rc = msg.init_size (3);
-    errno_assert (rc == 0);
+    msg.init_size (3);
     memcpy (msg.data (), "1.0", 3);
     msg.set_flags (msg_t::more);
     rc = session->write_zap_msg (&msg);
     errno_assert (rc == 0);
 
     //  Request ID frame
-    rc = msg.init_size (1);
-    errno_assert (rc == 0);
+    msg.init_size (1);
     memcpy (msg.data (), "1", 1);
     msg.set_flags (msg_t::more);
     rc = session->write_zap_msg (&msg);
     errno_assert (rc == 0);
 
     //  Domain frame
-    rc = msg.init_size (options.zap_domain.length ());
-    errno_assert (rc == 0);
+    msg.init_size (options.zap_domain.length ());
     memcpy (msg.data (), options.zap_domain.c_str (), options.zap_domain.length ());
     msg.set_flags (msg_t::more);
     rc = session->write_zap_msg (&msg);
     errno_assert (rc == 0);
 
     //  Address frame
-    rc = msg.init_size (peer_address.length ());
-    errno_assert (rc == 0);
+    msg.init_size (peer_address.length ());
     memcpy (msg.data (), peer_address.c_str (), peer_address.length ());
     msg.set_flags (msg_t::more);
     rc = session->write_zap_msg (&msg);
     errno_assert (rc == 0);
 
     //  Identity frame
-    rc = msg.init_size (options.identity_size);
-    errno_assert (rc == 0);
+    msg.init_size (options.identity_size);
     memcpy (msg.data (), options.identity, options.identity_size);
     msg.set_flags (msg_t::more);
     rc = session->write_zap_msg (&msg);
     errno_assert (rc == 0);
 
     //  Mechanism frame
-    rc = msg.init_size (5);
-    errno_assert (rc == 0);
+    msg.init_size (5);
     memcpy (msg.data (), "CURVE", 5);
     msg.set_flags (msg_t::more);
     rc = session->write_zap_msg (&msg);
     errno_assert (rc == 0);
 
     //  Credentials frame
-    rc = msg.init_size (crypto_box_PUBLICKEYBYTES);
-    errno_assert (rc == 0);
+    msg.init_size (crypto_box_PUBLICKEYBYTES);
     memcpy (msg.data (), key, crypto_box_PUBLICKEYBYTES);
     rc = session->write_zap_msg (&msg);
     errno_assert (rc == 0);
@@ -653,8 +636,7 @@ int zmq::curve_server_t::receive_and_process_zap_reply ()
 
     //  Initialize all reply frames
     for (int i = 0; i < 7; i++) {
-        rc = msg [i].init ();
-        errno_assert (rc == 0);
+        msg [i].init ();
     }
 
     for (int i = 0; i < 7; i++) {
@@ -721,8 +703,7 @@ int zmq::curve_server_t::receive_and_process_zap_reply ()
 
 error:
     for (int i = 0; i < 7; i++) {
-        const int rc2 = msg [i].close ();
-        errno_assert (rc2 == 0);
+        msg [i].close ();
     }
 
     return rc;

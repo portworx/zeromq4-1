@@ -46,8 +46,7 @@ zmq::v1_decoder_t::v1_decoder_t (size_t bufsize_, int64_t maxmsgsize_) :
     decoder_base_t <v1_decoder_t> (bufsize_),
     maxmsgsize (maxmsgsize_)
 {
-    int rc = in_progress.init ();
-    errno_assert (rc == 0);
+    in_progress.init ();
 
     //  At the beginning, read one byte and go to one_byte_size_ready state.
     next_step (tmpbuf, 1, &v1_decoder_t::one_byte_size_ready);
@@ -55,8 +54,7 @@ zmq::v1_decoder_t::v1_decoder_t (size_t bufsize_, int64_t maxmsgsize_) :
 
 zmq::v1_decoder_t::~v1_decoder_t ()
 {
-    int rc = in_progress.close ();
-    errno_assert (rc == 0);
+    in_progress.close ();
 }
 
 int zmq::v1_decoder_t::one_byte_size_ready ()
@@ -82,14 +80,7 @@ int zmq::v1_decoder_t::one_byte_size_ready ()
         //  in_progress is initialised at this point so in theory we should
         //  close it before calling zmq_msg_init_size, however, it's a 0-byte
         //  message and thus we can treat it as uninitialised...
-        int rc = in_progress.init_size (*tmpbuf - 1);
-        if (rc != 0) {
-            errno_assert (errno == ENOMEM);
-            rc = in_progress.init ();
-            errno_assert (rc == 0);
-            errno = ENOMEM;
-            return -1;
-        }
+        in_progress.init_size (*tmpbuf - 1);
 
         next_step (tmpbuf, 1, &v1_decoder_t::flags_ready);
     }
@@ -125,14 +116,7 @@ int zmq::v1_decoder_t::eight_byte_size_ready ()
     //  in_progress is initialised at this point so in theory we should
     //  close it before calling init_size, however, it's a 0-byte
     //  message and thus we can treat it as uninitialised...
-    int rc = in_progress.init_size (msg_size);
-    if (rc != 0) {
-        errno_assert (errno == ENOMEM);
-        rc = in_progress.init ();
-        errno_assert (rc == 0);
-        errno = ENOMEM;
-        return -1;
-    }
+    in_progress.init_size (msg_size);
 
     next_step (tmpbuf, 1, &v1_decoder_t::flags_ready);
     return 0;

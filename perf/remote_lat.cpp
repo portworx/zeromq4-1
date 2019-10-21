@@ -74,9 +74,15 @@ int main (int argc, char *argv [])
         return -1;
     }
 
-    rc = zmq_msg_init_size (&msg, message_size);
-    if (rc != 0) {
-        printf ("error in zmq_msg_init_size: %s\n", zmq_strerror (errno));
+    zmq_msg_init (&msg);
+
+    rc = zmq_recvmsg (s, &msg, 0);
+    if (rc < 0) {
+        printf ("error in zmq_recvmsg: %s\n", zmq_strerror (errno));
+        return -1;
+    }
+    if (zmq_msg_size (&msg) != message_size) {
+        printf ("message of incorrect size received\n");
         return -1;
     }
     memset (zmq_msg_data (&msg), 0, message_size);
@@ -102,11 +108,7 @@ int main (int argc, char *argv [])
 
     elapsed = zmq_stopwatch_stop (watch);
 
-    rc = zmq_msg_close (&msg);
-    if (rc != 0) {
-        printf ("error in zmq_msg_close: %s\n", zmq_strerror (errno));
-        return -1;
-    }
+    zmq_msg_close (&msg);
 
     latency = (double) elapsed / (roundtrip_count * 2);
 

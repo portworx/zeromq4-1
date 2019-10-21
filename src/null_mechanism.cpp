@@ -88,8 +88,7 @@ int zmq::null_mechanism_t::next_handshake_command (msg_t *msg_)
 
     if (zap_reply_received
     &&  strncmp (status_code, "200", sizeof status_code) != 0) {
-        const int rc = msg_->init_size (6 + 1 + sizeof status_code);
-        zmq_assert (rc == 0);
+        msg_->init_size (6 + 1 + sizeof status_code);
         unsigned char *msg_data =
             static_cast <unsigned char *> (msg_->data ());
         memcpy (msg_data, "\5ERROR", 6);
@@ -119,8 +118,7 @@ int zmq::null_mechanism_t::next_handshake_command (msg_t *msg_)
         ptr += add_property (ptr, "Identity", options.identity, options.identity_size);
 
     const size_t command_size = ptr - command_buffer;
-    const int rc = msg_->init_size (command_size);
-    errno_assert (rc == 0);
+    msg_->init_size (command_size);
     memcpy (msg_->data (), command_buffer, command_size);
     free (command_buffer);
 
@@ -214,55 +212,48 @@ void zmq::null_mechanism_t::send_zap_request ()
     msg_t msg;
 
     //  Address delimiter frame
-    rc = msg.init ();
-    errno_assert (rc == 0);
+    msg.init ();
     msg.set_flags (msg_t::more);
     rc = session->write_zap_msg (&msg);
     errno_assert (rc == 0);
 
     //  Version frame
-    rc = msg.init_size (3);
-    errno_assert (rc == 0);
+    msg.init_size (3);
     memcpy (msg.data (), "1.0", 3);
     msg.set_flags (msg_t::more);
     rc = session->write_zap_msg (&msg);
     errno_assert (rc == 0);
 
     //  Request id frame
-    rc = msg.init_size (1);
-    errno_assert (rc == 0);
+    msg.init_size (1);
     memcpy (msg.data (), "1", 1);
     msg.set_flags (msg_t::more);
     rc = session->write_zap_msg (&msg);
     errno_assert (rc == 0);
 
     //  Domain frame
-    rc = msg.init_size (options.zap_domain.length ());
-    errno_assert (rc == 0);
+    msg.init_size (options.zap_domain.length ());
     memcpy (msg.data (), options.zap_domain.c_str (), options.zap_domain.length ());
     msg.set_flags (msg_t::more);
     rc = session->write_zap_msg (&msg);
     errno_assert (rc == 0);
 
     //  Address frame
-    rc = msg.init_size (peer_address.length ());
-    errno_assert (rc == 0);
+    msg.init_size (peer_address.length ());
     memcpy (msg.data (), peer_address.c_str (), peer_address.length ());
     msg.set_flags (msg_t::more);
     rc = session->write_zap_msg (&msg);
     errno_assert (rc == 0);
 
     //  Identity frame
-    rc = msg.init_size (options.identity_size);
-    errno_assert (rc == 0);
+    msg.init_size (options.identity_size);
     memcpy (msg.data (), options.identity, options.identity_size);
     msg.set_flags (msg_t::more);
     rc = session->write_zap_msg (&msg);
     errno_assert (rc == 0);
 
     //  Mechanism frame
-    rc = msg.init_size (4);
-    errno_assert (rc == 0);
+    msg.init_size (4);
     memcpy (msg.data (), "NULL", 4);
     rc = session->write_zap_msg (&msg);
     errno_assert (rc == 0);
@@ -275,8 +266,7 @@ int zmq::null_mechanism_t::receive_and_process_zap_reply ()
 
     //  Initialize all reply frames
     for (int i = 0; i < 7; i++) {
-        rc = msg [i].init ();
-        errno_assert (rc == 0);
+        msg [i].init ();
     }
 
     for (int i = 0; i < 7; i++) {
@@ -343,8 +333,7 @@ int zmq::null_mechanism_t::receive_and_process_zap_reply ()
 
 error:
     for (int i = 0; i < 7; i++) {
-        const int rc2 = msg [i].close ();
-        errno_assert (rc2 == 0);
+        msg [i].close ();
     }
 
     return rc;

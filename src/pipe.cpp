@@ -161,8 +161,7 @@ read_message:
     if (unlikely (msg_->is_credential ())) {
         const unsigned char *data = static_cast <const unsigned char *> (msg_->data ());
         credential = blob_t (data, msg_->size ());
-        const int rc = msg_->close ();
-        zmq_assert (rc == 0);
+        msg_->close ();
         goto read_message;
     }
 
@@ -219,8 +218,7 @@ void zmq::pipe_t::rollback ()
     if (outpipe) {
         while (outpipe->unwrite (&msg)) {
             zmq_assert (msg.flags () & msg_t::more);
-            int rc = msg.close ();
-            errno_assert (rc == 0);
+            msg.close ();
         }
     }
 }
@@ -264,8 +262,7 @@ void zmq::pipe_t::process_hiccup (void *pipe_)
     while (outpipe->read (&msg)) {
        if (!(msg.flags () & msg_t::more))
             msgs_written--;
-       int rc = msg.close ();
-       errno_assert (rc == 0);
+       msg.close ();
     }
     delete outpipe;
 
@@ -345,8 +342,7 @@ void zmq::pipe_t::process_pipe_term_ack ()
 
     msg_t msg;
     while (inpipe->read(&msg)) {
-        int rc = msg.close();
-        errno_assert (rc == 0);
+        msg.close();
     }
 
     delete inpipe;

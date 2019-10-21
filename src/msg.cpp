@@ -71,21 +71,15 @@ inline void zmq::msg_t::init_lsm(size_t size)
     u.lmsg.size = size;
 }
 
-int zmq::msg_t::init ()
+void zmq::msg_t::init ()
 {
     init_vsm();
-    return 0;
 }
 
-int zmq::msg_t::init_size (size_t size_)
+void zmq::msg_t::init_size (size_t size_)
 {
     init_lsm(size_);
-    u.lmsg.content =
-        (content_t *) malloc(sizeof(content_t) + sizeof(iovec) + size_);
-    if (unlikely (!u.lmsg.content)) {
-        errno = ENOMEM;
-        return -1;
-    }
+    u.lmsg.content = (content_t *) malloc(sizeof(content_t) + sizeof(iovec) + size_);
 
     u.lmsg.content->data_iov = (iovec *) (u.lmsg.content + 1);
     u.lmsg.content->iovcnt = 1;
@@ -95,7 +89,6 @@ int zmq::msg_t::init_size (size_t size_)
     u.lmsg.content->ffn = NULL;
     u.lmsg.content->hint = NULL;
     new(&u.lmsg.content->refcnt) zmq::atomic_counter_t();
-    return 0;
 }
 
 namespace {
@@ -104,7 +97,7 @@ void do_nothing(void *, void *) {}
 
 }
 
-int zmq::msg_t::init_data (void *data_, size_t size_, msg_free_fn *ffn_,
+void zmq::msg_t::init_data (void *data_, size_t size_, msg_free_fn *ffn_,
     void *hint_)
 {
     if (ffn_ == nullptr) {
@@ -113,10 +106,6 @@ int zmq::msg_t::init_data (void *data_, size_t size_, msg_free_fn *ffn_,
 
     init_lsm(size_);
     u.lmsg.content = (content_t *) malloc(sizeof(content_t) + sizeof(iovec));
-    if (!u.lmsg.content) {
-        errno = ENOMEM;
-        return -1;
-    }
 
     u.lmsg.content->data_iov = (iovec *) (u.lmsg.content + 1);
     u.lmsg.content->iovcnt = 1;
@@ -126,8 +115,6 @@ int zmq::msg_t::init_data (void *data_, size_t size_, msg_free_fn *ffn_,
     u.lmsg.content->ffn = ffn_;
     u.lmsg.content->hint = hint_;
     new(&u.lmsg.content->refcnt) zmq::atomic_counter_t();
-
-    return 0;
 }
 
 void zmq::msg_t::init_content(zmq_content *data_, size_t size_,
@@ -146,27 +133,20 @@ void zmq::msg_t::init_content(zmq_content *data_, size_t size_,
 	new (&u.lmsg.content->refcnt) zmq::atomic_counter_t ();
 }
 
-int zmq::msg_t::init_iov(iovec *iov, int iovcnt, size_t size, msg_free_fn *ffn_, void *hint_)
+void zmq::msg_t::init_iov(iovec *iov, int iovcnt, size_t size, msg_free_fn *ffn_, void *hint_)
 {
 	zmq_assert(iov != NULL && iovcnt > 0 && ffn_ != NULL);
 	init_lsm(size);
 	u.lmsg.content = (content_t*) malloc (sizeof (content_t));
-	if (!u.lmsg.content) {
-		errno = ENOMEM;
-		return -1;
-	}
-
 	u.lmsg.content->data_iov = iov;
 	u.lmsg.content->iovcnt = iovcnt;
 	u.lmsg.content->size = size;
 	u.lmsg.content->ffn = ffn_;
 	u.lmsg.content->hint = hint_;
 	new (&u.lmsg.content->refcnt) zmq::atomic_counter_t ();
-
-	return 0;
 }
 
-int zmq::msg_t::init_iov_content(zmq_content *content, iovec *iov, int iovcnt, size_t size,
+void zmq::msg_t::init_iov_content(zmq_content *content, iovec *iov, int iovcnt, size_t size,
 	msg_free_fn *ffn_, void *hint_)
 {
 	init_lsm(size);
@@ -178,8 +158,6 @@ int zmq::msg_t::init_iov_content(zmq_content *content, iovec *iov, int iovcnt, s
 	u.lmsg.content->hint = hint_;
 	u.lmsg.flags |= malloced;
 	new (&u.lmsg.content->refcnt) zmq::atomic_counter_t ();
-
-	return 0;
 }
 
 int zmq::msg_t::init_delimiter ()
@@ -190,10 +168,10 @@ int zmq::msg_t::init_delimiter ()
     return 0;
 }
 
-int zmq::msg_t::close()
+void zmq::msg_t::close()
 {
     if (u.base.type == type_empty)
-        return 0;
+        return;
 
     assert(u.base.type == type_lmsg);
 
@@ -214,30 +192,20 @@ int zmq::msg_t::close()
         if (free_content)
             free(u.lmsg.content);
     }
-
-    return 0;
 }
 
-int zmq::msg_t::move (msg_t &src_)
+void zmq::msg_t::move (msg_t &src_)
 {
-    int rc = close ();
-    if (unlikely (rc < 0))
-        return rc;
+    close ();
 
     *this = src_;
 
-    rc = src_.init ();
-    if (unlikely (rc < 0))
-        return rc;
-
-    return 0;
+    src_.init ();
 }
 
-int zmq::msg_t::copy (msg_t &src_)
+void zmq::msg_t::copy (msg_t &src_)
 {
-    int rc = close ();
-    if (unlikely (rc < 0))
-        return rc;
+    close ();
 
     if (src_.u.lmsg.type == type_lmsg) {
         //  One reference is added to shared messages. Non-shared messages
@@ -251,9 +219,6 @@ int zmq::msg_t::copy (msg_t &src_)
     }
 
     *this = src_;
-
-    return 0;
-
 }
 
 void *zmq::msg_t::data ()

@@ -51,8 +51,7 @@ void zmq::mechanism_t::set_peer_identity (const void *id_ptr, size_t id_size)
 
 void zmq::mechanism_t::peer_identity (msg_t *msg_)
 {
-    const int rc = msg_->init_size (identity.size ());
-    errno_assert (rc == 0);
+    msg_->init_size (identity.size ());
     memcpy (msg_->data (), identity.data (), identity.size ());
     msg_->set_flags (msg_t::identity);
 }

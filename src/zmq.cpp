@@ -363,17 +363,14 @@ int zmq_send (void *s_, const void *buf_, size_t len_, int flags_)
         return -1;
     }
     zmq_msg_t msg;
-    int rc = zmq_msg_init_size (&msg, len_);
-    if (rc != 0)
-        return -1;
+    zmq_msg_init_size (&msg, len_);
     memcpy (zmq_msg_data (&msg), buf_, len_);
 
     zmq::socket_base_t *s = (zmq::socket_base_t *) s_;
-    rc = s_sendmsg (s, &msg, flags_);
+    int rc = s_sendmsg (s, &msg, flags_);
     if (unlikely (rc < 0)) {
         int err = errno;
-        int rc2 = zmq_msg_close (&msg);
-        errno_assert (rc2 == 0);
+        zmq_msg_close (&msg);
         errno = err;
         return -1;
     }
@@ -390,16 +387,13 @@ int zmq_send_const (void *s_, const void *buf_, size_t len_, int flags_)
         return -1;
     }
     zmq_msg_t msg;
-    int rc = zmq_msg_init_data (&msg, (void*)buf_, len_, NULL, NULL);
-    if (rc != 0)
-        return -1;
+    zmq_msg_init_data (&msg, (void*)buf_, len_, NULL, NULL);
 
     zmq::socket_base_t *s = (zmq::socket_base_t *) s_;
-    rc = s_sendmsg (s, &msg, flags_);
+    int rc = s_sendmsg (s, &msg, flags_);
     if (unlikely (rc < 0)) {
         int err = errno;
-        int rc2 = zmq_msg_close (&msg);
-        errno_assert (rc2 == 0);
+        zmq_msg_close (&msg);
         errno = err;
         return -1;
     }
@@ -428,19 +422,14 @@ int zmq_sendiov (void *s_, iovec *a_, size_t count_, int flags_)
     zmq::socket_base_t *s = (zmq::socket_base_t *) s_;
 
     for (size_t i = 0; i < count_; ++i) {
-        rc = zmq_msg_init_size (&msg, a_[i].iov_len);
-        if (rc != 0) {
-            rc = -1;
-            break;
-        }
+        zmq_msg_init_size (&msg, a_[i].iov_len);
         memcpy (zmq_msg_data (&msg), a_[i].iov_base, a_[i].iov_len);
         if (i == count_ - 1)
             flags_ = flags_ & ~ZMQ_SNDMORE;
         rc = s_sendmsg (s, &msg, flags_);
         if (unlikely (rc < 0)) {
            int err = errno;
-           int rc2 = zmq_msg_close (&msg);
-           errno_assert (rc2 == 0);
+           zmq_msg_close (&msg);
            errno = err;
            rc = -1;
            break;
@@ -474,15 +463,13 @@ int zmq_recv (void *s_, void *buf_, size_t len_, int flags_)
         return -1;
     }
     zmq_msg_t msg;
-    int rc = zmq_msg_init (&msg);
-    errno_assert (rc == 0);
+    zmq_msg_init (&msg);
 
     zmq::socket_base_t *s = (zmq::socket_base_t *) s_;
     int nbytes = s_recvmsg (s, &msg, flags_);
     if (unlikely (nbytes < 0)) {
         int err = errno;
-        rc = zmq_msg_close (&msg);
-        errno_assert (rc == 0);
+        zmq_msg_close (&msg);
         errno = err;
         return -1;
     }
@@ -492,8 +479,7 @@ int zmq_recv (void *s_, void *buf_, size_t len_, int flags_)
     size_t to_copy = size_t (nbytes) < len_ ? size_t (nbytes) : len_;
     memcpy (buf_, zmq_msg_data (&msg), to_copy);
 
-    rc = zmq_msg_close (&msg);
-    errno_assert (rc == 0);
+    zmq_msg_close (&msg);
 
     return nbytes;
 }
@@ -531,14 +517,12 @@ int zmq_recviov (void *s_, iovec *a_, size_t *count_, int flags_)
     for (size_t i = 0; recvmore && i < count; ++i) {
 
         zmq_msg_t msg;
-        int rc = zmq_msg_init (&msg);
-        errno_assert (rc == 0);
+        zmq_msg_init (&msg);
 
         int nbytes = s_recvmsg (s, &msg, flags_);
         if (unlikely (nbytes < 0)) {
             int err = errno;
-            rc = zmq_msg_close (&msg);
-            errno_assert (rc == 0);
+            zmq_msg_close (&msg);
             errno = err;
             nread = -1;
             break;
@@ -555,8 +539,7 @@ int zmq_recviov (void *s_, iovec *a_, size_t *count_, int flags_)
         // Assume zmq_socket ZMQ_RVCMORE is properly set.
         zmq::msg_t* p_msg = reinterpret_cast<zmq::msg_t*>(&msg);
         recvmore = p_msg->flags() & zmq::msg_t::more;
-        rc = zmq_msg_close(&msg);
-        errno_assert (rc == 0);
+        zmq_msg_close(&msg);
         ++*count_;
         ++nread;
     }
@@ -565,20 +548,20 @@ int zmq_recviov (void *s_, iovec *a_, size_t *count_, int flags_)
 
 // Message manipulators.
 
-int zmq_msg_init (zmq_msg_t *msg_)
+void zmq_msg_init (zmq_msg_t *msg_)
 {
-    return ((zmq::msg_t*) msg_)->init ();
+    ((zmq::msg_t*) msg_)->init ();
 }
 
-int zmq_msg_init_size (zmq_msg_t *msg_, size_t size_)
+void zmq_msg_init_size (zmq_msg_t *msg_, size_t size_)
 {
-    return ((zmq::msg_t*) msg_)->init_size (size_);
+    ((zmq::msg_t*) msg_)->init_size (size_);
 }
 
-int zmq_msg_init_data (zmq_msg_t *msg_, void *data_, size_t size_,
+void zmq_msg_init_data (zmq_msg_t *msg_, void *data_, size_t size_,
     zmq_free_fn *ffn_, void *hint_)
 {
-    return ((zmq::msg_t*) msg_)->init_data (data_, size_, ffn_, hint_);
+    ((zmq::msg_t*) msg_)->init_data (data_, size_, ffn_, hint_);
 }
 
 void
@@ -588,26 +571,26 @@ zmq_msg_init_content(zmq_msg_t *msg_, zmq_content *content_, size_t size_,
     ((zmq::msg_t*) msg_)->init_content (content_, size_, ffn_, hint_);
 }
 
-int zmq_msg_init_iov (zmq_msg_t *msg, struct iovec *iov,
+void zmq_msg_init_iov (zmq_msg_t *msg, struct iovec *iov,
                       int iovcnt, zmq_free_fn *ffn, void *hint)
 {
     size_t size = 0;
     for (int i = 0; i < iovcnt; ++i)
         size += iov[i].iov_len;
-    return zmq_msg_init_iov_size(msg, iov, iovcnt, size, ffn, hint);
+    zmq_msg_init_iov_size(msg, iov, iovcnt, size, ffn, hint);
 }
 
-int zmq_msg_init_iov_size (zmq_msg_t *msg_, struct iovec *iov,
+void zmq_msg_init_iov_size (zmq_msg_t *msg_, struct iovec *iov,
                       int iovcnt, size_t size, zmq_free_fn *ffn, void *hint)
 {
-    return ((zmq::msg_t*) msg_)->init_iov(iov, iovcnt, size, ffn, hint);
+    ((zmq::msg_t*) msg_)->init_iov(iov, iovcnt, size, ffn, hint);
 }
 
-int zmq_msg_init_iov_size_content (zmq_msg_t *msg,
+void zmq_msg_init_iov_size_content (zmq_msg_t *msg,
         struct zmq_content *content, struct iovec *iov,
         int iovcnt, size_t size, zmq_free_fn *ffn, void *hint)
 {
-    return ((zmq::msg_t*) msg)->init_iov_content(content, iov, iovcnt, size, ffn, hint);
+    ((zmq::msg_t*) msg)->init_iov_content(content, iov, iovcnt, size, ffn, hint);
 }
 
 int zmq_msg_send (zmq_msg_t *msg_, void *s_, int flags_)
@@ -632,19 +615,19 @@ int zmq_msg_recv (zmq_msg_t *msg_, void *s_, int flags_)
     return result;
 }
 
-int zmq_msg_close (zmq_msg_t *msg_)
+void zmq_msg_close (zmq_msg_t *msg_)
 {
-    return ((zmq::msg_t*) msg_)->close ();
+    ((zmq::msg_t*) msg_)->close ();
 }
 
-int zmq_msg_move (zmq_msg_t *dest_, zmq_msg_t *src_)
+void zmq_msg_move (zmq_msg_t *dest_, zmq_msg_t *src_)
 {
-    return ((zmq::msg_t*) dest_)->move (*(zmq::msg_t*) src_);
+    ((zmq::msg_t*) dest_)->move (*(zmq::msg_t*) src_);
 }
 
-int zmq_msg_copy (zmq_msg_t *dest_, zmq_msg_t *src_)
+void zmq_msg_copy (zmq_msg_t *dest_, zmq_msg_t *src_)
 {
-    return ((zmq::msg_t*) dest_)->copy (*(zmq::msg_t*) src_);
+    ((zmq::msg_t*) dest_)->copy (*(zmq::msg_t*) src_);
 }
 
 void *zmq_msg_data (zmq_msg_t *msg_)

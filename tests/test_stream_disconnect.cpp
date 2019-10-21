@@ -50,7 +50,7 @@ bool has_more (void* socket)
     int more = 0;
     size_t more_size = sizeof(more);
     int rc = zmq_getsockopt (socket, ZMQ_RCVMORE, &more, &more_size);
-    if (rc != 0) 
+    if (rc != 0)
         return false;
     return more != 0;
 }
@@ -117,20 +117,16 @@ int main(int, char**)
     assert (rc != -1);
     assert(blob_size > 0);
     zmq_msg_t msg;
-    rc = zmq_msg_init_size (&msg, blob_size);
-    assert (rc == 0);
+    zmq_msg_init_size (&msg, blob_size);
     memcpy (zmq_msg_data (&msg), blob_data, blob_size);
     rc = zmq_msg_send (&msg, sockets [dialog [0].turn], ZMQ_SNDMORE);
     assert (rc != -1);
-    rc = zmq_msg_close (&msg);
-    assert (rc == 0);
-    rc = zmq_msg_init_size (&msg, strlen(dialog [0].text));
-    assert (rc == 0);
+    zmq_msg_close (&msg);
+    zmq_msg_init_size (&msg, strlen(dialog [0].text));
     memcpy (zmq_msg_data (&msg), dialog [0].text, strlen(dialog [0].text));
     rc = zmq_msg_send (&msg, sockets [dialog [0].turn], ZMQ_SNDMORE);
     assert (rc != -1);
-    rc = zmq_msg_close (&msg);
-    assert (rc == 0);
+    zmq_msg_close (&msg);
 
     // TODO: make sure this loop doesn't loop forever if something is wrong
     //       with the test (or the implementation).
@@ -184,11 +180,8 @@ int main(int, char**)
                 assert (step < steps);
 
                 // Prepare the response.
-                rc = zmq_msg_close (&data_frame);
-		assert (rc == 0);
-                rc = zmq_msg_init_size (&data_frame,
-					strlen (dialog [step].text));
-		assert (rc == 0);
+                zmq_msg_close (&data_frame);
+                zmq_msg_init_size (&data_frame, strlen (dialog [step].text));
                 memcpy (zmq_msg_data (&data_frame), dialog [step].text,
 			zmq_msg_size (&data_frame));
 
@@ -200,10 +193,8 @@ int main(int, char**)
             }
 
             // Release resources.
-            rc = zmq_msg_close (&peer_frame);
-	    assert (rc == 0);
-            rc = zmq_msg_close (&data_frame);
-	    assert (rc == 0);
+            zmq_msg_close (&peer_frame);
+            zmq_msg_close (&data_frame);
         }
 
         // Check for data received by the client.
@@ -238,10 +229,8 @@ int main(int, char**)
 
             // Prepare the response (next line in the dialog).
             assert (step < steps);
-            rc = zmq_msg_close (&data_frame);
-	    assert (rc == 0);
-            rc = zmq_msg_init_size (&data_frame, strlen (dialog [step].text));
-	    assert (rc == 0);
+            zmq_msg_close (&data_frame);
+            zmq_msg_init_size (&data_frame, strlen (dialog [step].text));
             memcpy (zmq_msg_data (&data_frame), dialog [step].text, zmq_msg_size (&data_frame));
 
             // Send the response.
@@ -251,10 +240,8 @@ int main(int, char**)
 	    assert (rc != -1);
 
             // Release resources.
-            rc = zmq_msg_close (&peer_frame);
-	    assert (rc == 0);
-            rc = zmq_msg_close (&data_frame);
-	    assert (rc == 0);
+            zmq_msg_close (&peer_frame);
+            zmq_msg_close (&data_frame);
         }
     }
     assert (step == steps);

@@ -69,11 +69,7 @@ static void *worker (void *ctx_)
         exit (1);
     }
 
-    rc = zmq_msg_init (&msg);
-    if (rc != 0) {
-        printf ("error in zmq_msg_init: %s\n", zmq_strerror (errno));
-        exit (1);
-    }
+    zmq_msg_init (&msg);
 
     for (i = 0; i != roundtrip_count; i++) {
         rc = zmq_recvmsg (s, &msg, 0);
@@ -88,11 +84,7 @@ static void *worker (void *ctx_)
         }
     }
 
-    rc = zmq_msg_close (&msg);
-    if (rc != 0) {
-        printf ("error in zmq_msg_close: %s\n", zmq_strerror (errno));
-        exit (1);
-    }
+    zmq_msg_close (&msg);
 
     rc = zmq_close (s);
     if (rc != 0) {
@@ -164,11 +156,7 @@ int main (int argc, char *argv [])
     }
 #endif
 
-    rc = zmq_msg_init_size (&msg, message_size);
-    if (rc != 0) {
-        printf ("error in zmq_msg_init_size: %s\n", zmq_strerror (errno));
-        return -1;
-    }
+    zmq_msg_init_size (&msg, message_size);
     memset (zmq_msg_data (&msg), 0, message_size);
 
     printf ("message size: %d [B]\n", (int) message_size);
@@ -195,11 +183,7 @@ int main (int argc, char *argv [])
 
     elapsed = zmq_stopwatch_stop (watch);
 
-    rc = zmq_msg_close (&msg);
-    if (rc != 0) {
-        printf ("error in zmq_msg_close: %s\n", zmq_strerror (errno));
-        return -1;
-    }
+    zmq_msg_close (&msg);
 
     latency = (double) elapsed / (roundtrip_count * 2);
 

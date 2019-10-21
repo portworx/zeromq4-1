@@ -136,8 +136,7 @@ int zmq::session_base_t::pull_msg (msg_t *msg_)
 int zmq::session_base_t::push_msg (msg_t *msg_)
 {
     if (pipe && pipe->write (msg_)) {
-        int rc = msg_->init ();
-        errno_assert (rc == 0);
+        msg_->init ();
         return 0;
     }
 
@@ -173,8 +172,7 @@ int zmq::session_base_t::write_zap_msg (msg_t *msg_)
     if ((msg_->flags () & msg_t::more) == 0)
         zap_pipe->flush ();
 
-    const int rc = msg_->init ();
-    errno_assert (rc == 0);
+    msg_->init ();
     return 0;
 }
 
@@ -200,12 +198,10 @@ void zmq::session_base_t::clean_pipes ()
     //  Remove any half-read message from the in pipe.
     while (incomplete_in) {
         msg_t msg;
-        int rc = msg.init ();
+        msg.init ();
+        int rc = pull_msg (&msg);
         errno_assert (rc == 0);
-        rc = pull_msg (&msg);
-        errno_assert (rc == 0);
-        rc = msg.close ();
-        errno_assert (rc == 0);
+        msg.close ();
     }
 }
 
@@ -329,8 +325,7 @@ int zmq::session_base_t::zap_connect ()
     //  Send empty identity if required by the peer.
     if (peer.options.recv_identity) {
         msg_t id;
-        rc = id.init ();
-        errno_assert (rc == 0);
+        id.init ();
         id.set_flags (msg_t::identity);
         bool ok = zap_pipe->write (&id);
         zmq_assert (ok);

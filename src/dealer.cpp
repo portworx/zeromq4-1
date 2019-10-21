@@ -51,15 +51,13 @@ void zmq::dealer_t::xattach_pipe (pipe_t *pipe_, bool subscribe_to_all_)
 
     if (probe_router) {
         msg_t probe_msg_;
-        int rc = probe_msg_.init ();
-        errno_assert (rc == 0);
+        probe_msg_.init ();
 
-        rc = pipe_->write (&probe_msg_);
+        (void)pipe_->write (&probe_msg_);
         // zmq_assert (rc) is not applicable here, since it is not a bug.
         pipe_->flush ();
 
-        rc = probe_msg_.close ();
-        errno_assert (rc == 0);
+        probe_msg_.close ();
     }
 
     fq.attach (pipe_);

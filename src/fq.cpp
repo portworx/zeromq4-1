@@ -87,8 +87,7 @@ int zmq::fq_t::recv (msg_t *msg_)
 int zmq::fq_t::recvpipe (msg_t *msg_, pipe_t **pipe_)
 {
     //  Deallocate old content of the message.
-    int rc = msg_->close ();
-    errno_assert (rc == 0);
+    msg_->close ();
 
     //  Round-robin over the pipes to get the next message.
     while (active > 0) {
@@ -124,8 +123,7 @@ int zmq::fq_t::recvpipe (msg_t *msg_, pipe_t **pipe_)
 
     //  No message is available. Initialise the output parameter
     //  to be a 0-byte message.
-    rc = msg_->init ();
-    errno_assert (rc == 0);
+    msg_->init ();
     errno = EAGAIN;
     return -1;
 }

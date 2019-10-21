@@ -70,11 +70,7 @@ int main (int argc, char *argv [])
         return -1;
     }
 
-    rc = zmq_msg_init (&msg);
-    if (rc != 0) {
-        printf ("error in zmq_msg_init: %s\n", zmq_strerror (errno));
-        return -1;
-    }
+    zmq_msg_init (&msg);
 
     for (i = 0; i != roundtrip_count; i++) {
         rc = zmq_recvmsg (s, &msg, 0);
@@ -93,11 +89,7 @@ int main (int argc, char *argv [])
         }
     }
 
-    rc = zmq_msg_close (&msg);
-    if (rc != 0) {
-        printf ("error in zmq_msg_close: %s\n", zmq_strerror (errno));
-        return -1;
-    }
+    zmq_msg_close (&msg);
 
     zmq_sleep (1);
 

@@ -73,15 +73,13 @@ void zmq::router_t::xattach_pipe (pipe_t *pipe_, bool subscribe_to_all_)
 
     if (probe_router) {
         msg_t probe_msg_;
-        int rc = probe_msg_.init ();
-        errno_assert (rc == 0);
+        probe_msg_.init ();
 
-        rc = pipe_->write (&probe_msg_);
+        (void)pipe_->write (&probe_msg_);
         // zmq_assert (rc) is not applicable here, since it is not a bug.
         pipe_->flush ();
 
-        rc = probe_msg_.close ();
-        errno_assert (rc == 0);
+        probe_msg_.close ();
     }
 
     bool identity_ok = identify_peer (pipe_);
@@ -225,10 +223,8 @@ int zmq::router_t::xsend (msg_t *msg_)
             }
         }
 
-        int rc = msg_->close ();
-        errno_assert (rc == 0);
-        rc = msg_->init ();
-        errno_assert (rc == 0);
+        msg_->close ();
+        msg_->init ();
         return 0;
     }
 
@@ -247,10 +243,8 @@ int zmq::router_t::xsend (msg_t *msg_)
         // Pending messages in the pipe will be dropped (on receiving term- ack)
         if (raw_sock && msg_->size() == 0) {
             current_out->terminate (false);
-            int rc = msg_->close ();
-            errno_assert (rc == 0);
-            rc = msg_->init ();
-            errno_assert (rc == 0);
+            msg_->close ();
+            msg_->init ();
             current_out = NULL;
             return 0;
         }
@@ -258,8 +252,7 @@ int zmq::router_t::xsend (msg_t *msg_)
         bool ok = current_out->write (msg_);
         if (unlikely (!ok)) {
             // Message failed to send - we must close it ourselves.
-            int rc = msg_->close ();
-            errno_assert (rc == 0);
+            msg_->close ();
             current_out = NULL;
         } else {
           if (!more_out) {
@@ -269,13 +262,11 @@ int zmq::router_t::xsend (msg_t *msg_)
         }
     }
     else {
-        int rc = msg_->close ();
-        errno_assert (rc == 0);
+        msg_->close ();
     }
 
     //  Detach the message from the data buffer.
-    int rc = msg_->init ();
-    errno_assert (rc == 0);
+    msg_->init ();
 
     return 0;
 }
@@ -284,13 +275,11 @@ int zmq::router_t::xrecv (msg_t *msg_)
 {
     if (prefetched) {
         if (!identity_sent) {
-            int rc = msg_->move (prefetched_id);
-            errno_assert (rc == 0);
+            msg_->move (prefetched_id);
             identity_sent = true;
         }
         else {
-            int rc = msg_->move (prefetched_msg);
-            errno_assert (rc == 0);
+            msg_->move (prefetched_msg);
             prefetched = false;
         }
         more_in = msg_->flags () & msg_t::more ? true : false;
@@ -318,13 +307,11 @@ int zmq::router_t::xrecv (msg_t *msg_)
         //  We are at the beginning of a message.
         //  Keep the message part we have in the prefetch buffer
         //  and return the ID of the peer instead.
-        rc = prefetched_msg.move (*msg_);
-        errno_assert (rc == 0);
+        prefetched_msg.move (*msg_);
         prefetched = true;
 
         blob_t identity = pipe->get_identity ();
-        rc = msg_->init_size (identity.size ());
-        errno_assert (rc == 0);
+        msg_->init_size (identity.size ());
         memcpy (msg_->data (), identity.data (), identity.size ());
         msg_->set_flags (msg_t::more);
         identity_sent = true;
@@ -372,8 +359,7 @@ bool zmq::router_t::xhas_in ()
     zmq_assert (pipe != NULL);
 
     blob_t identity = pipe->get_identity ();
-    rc = prefetched_id.init_size (identity.size ());
-    errno_assert (rc == 0);
+    prefetched_id.init_size (identity.size ());
     memcpy (prefetched_id.data (), identity.data (), identity.size ());
     prefetched_id.set_flags (msg_t::more);
 
@@ -556,8 +542,7 @@ int zmq::px_server::xsend (msg_t *msg_)
         bool ok = current_out->write (msg_);
         if (unlikely (!ok)) {
             // Message failed to send - we must close it ourselves.
-            int rc = msg_->close ();
-            errno_assert (rc == 0);
+            msg_->close ();
             current_out = NULL;
         } else {
             if (!more_out) {
@@ -567,13 +552,11 @@ int zmq::px_server::xsend (msg_t *msg_)
         }
     }
     else {
-        int rc = msg_->close ();
-        errno_assert (rc == 0);
+        msg_->close ();
     }
 
     //  Detach the message from the data buffer.
-    int rc = msg_->init ();
-    errno_assert (rc == 0);
+    msg_->init ();
 
     return 0;
 }
@@ -581,8 +564,7 @@ int zmq::px_server::xsend (msg_t *msg_)
 int zmq::px_server::xrecv (msg_t *msg_)
 {
 	if (prefetched) {
-		int rc = msg_->move (prefetched_msg);
-		errno_assert (rc == 0);
+		msg_->move (prefetched_msg);
 		prefetched = false;
 		more_in = msg_->flags () & msg_t::more ? true : false;
 		return 0;

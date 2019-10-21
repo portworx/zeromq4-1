@@ -147,8 +147,7 @@ void test_pull_fair_queue_in (void *ctx)
     }
     assert (second_half == 0);
 
-    rc = zmq_msg_close (&msg);
-    assert (rc == 0);
+    zmq_msg_close (&msg);
 
     close_zero_linger (pull);
 
@@ -253,8 +252,7 @@ void test_destroy_queue_on_disconnect (void *ctx)
     assert (rc == -1);
     assert (errno == EAGAIN);
 
-    rc = zmq_msg_close (&msg);
-    assert (rc == 0);
+    zmq_msg_close (&msg);
 
     close_zero_linger (A);
     close_zero_linger (B);

@@ -80,20 +80,20 @@ namespace zmq
         };
 
         bool check ();
-        int init ();
-        int init_size (size_t size_);
-        int init_data (void *data_, size_t size_, msg_free_fn *ffn_,
+        void init ();
+        void init_size (size_t size_);
+        void init_data (void *data_, size_t size_, msg_free_fn *ffn_,
             void *hint_);
 	void init_content(zmq_content *content_, size_t size_,
 		msg_free_fn *ffn_,
 		void *hint_);
-        int init_iov(iovec *iov, int iovcnt, size_t size, msg_free_fn *ffn_, void *hint);
-	int init_iov_content(zmq_content *content, iovec *iov, int iovcnt, size_t size,
+        void init_iov(iovec *iov, int iovcnt, size_t size, msg_free_fn *ffn_, void *hint);
+	void init_iov_content(zmq_content *content, iovec *iov, int iovcnt, size_t size,
 		msg_free_fn *ffn_, void *hint);
         int init_delimiter ();
-        int close ();
-        int move (msg_t &src_);
-        int copy (msg_t &src_);
+        void close ();
+        void move (msg_t &src_);
+        void copy (msg_t &src_);
         void *data ();
         void *buf(int index);
 	void *push(size_t size_);

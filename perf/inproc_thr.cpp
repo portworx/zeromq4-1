@@ -73,11 +73,7 @@ static void *worker (void *ctx_)
 
     for (i = 0; i != message_count; i++) {
 
-        rc = zmq_msg_init_size (&msg, message_size);
-        if (rc != 0) {
-            printf ("error in zmq_msg_init_size: %s\n", zmq_strerror (errno));
-            exit (1);
-        }
+        zmq_msg_init_size (&msg, message_size);
 #if defined ZMQ_MAKE_VALGRIND_HAPPY
         memset (zmq_msg_data (&msg), 0, message_size);
 #endif
@@ -87,11 +83,7 @@ static void *worker (void *ctx_)
             printf ("error in zmq_sendmsg: %s\n", zmq_strerror (errno));
             exit (1);
         }
-        rc = zmq_msg_close (&msg);
-        if (rc != 0) {
-            printf ("error in zmq_msg_close: %s\n", zmq_strerror (errno));
-            exit (1);
-        }
+        zmq_msg_close (&msg);
     }
 
     rc = zmq_close (s);
@@ -165,11 +157,7 @@ int main (int argc, char *argv [])
     }
 #endif
 
-    rc = zmq_msg_init (&msg);
-    if (rc != 0) {
-        printf ("error in zmq_msg_init: %s\n", zmq_strerror (errno));
-        return -1;
-    }
+    zmq_msg_init (&msg);
 
     printf ("message size: %d [B]\n", (int) message_size);
     printf ("message count: %d\n", (int) message_count);
@@ -202,11 +190,7 @@ int main (int argc, char *argv [])
     if (elapsed == 0)
         elapsed = 1;
 
-    rc = zmq_msg_close (&msg);
-    if (rc != 0) {
-        printf ("error in zmq_msg_close: %s\n", zmq_strerror (errno));
-        return -1;
-    }
+    zmq_msg_close (&msg);
 
 #if defined ZMQ_HAVE_WINDOWS
     DWORD rc2 = WaitForSingleObject (local_thread, INFINITE);
