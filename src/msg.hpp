@@ -204,13 +204,14 @@ namespace zmq
 
     class alignas(64) global_buf_pool {
     public:
-        global_buf_pool(size_t struct_size);
+        global_buf_pool(size_t struct_size, size_t align = 0);
         ~global_buf_pool();
     private:
         friend class buf_pool;
 
         std::mutex lock;
         size_t struct_size;
+        size_t alignment;
         std::vector<void *> list;
         std::vector<void *> blocks;
     };

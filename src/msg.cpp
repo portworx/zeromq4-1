@@ -350,14 +350,15 @@ void zmq::msg_t::add_to_iovec_buf(zmq::iovec_buf &buf)
     buf.size += u.lmsg.size;
 }
 
-zmq::global_buf_pool::global_buf_pool(size_t struct_size) : struct_size(struct_size)
+zmq::global_buf_pool::global_buf_pool(size_t struct_size, size_t align) :
+	struct_size(struct_size), alignment(align)
 {
 }
 
 zmq::global_buf_pool::~global_buf_pool()
 {
     for (auto &v : blocks)
-        ::operator delete(v);
+        free(v);
 }
 
 zmq::buf_pool::buf_pool(zmq::global_buf_pool &global_list, size_t block_size) :
@@ -376,13 +377,15 @@ void *zmq::buf_pool::alloc_slow()
     std::unique_lock<std::mutex> lock(global_list.lock);
     if (global_list.list.size() < block_size) {
         lock.unlock();
-        auto mem = reinterpret_cast<char*>(
-            ::operator new(global_list.struct_size * block_size));
+        auto alloc_size = global_list.struct_size * block_size;
+        auto mem = global_list.alignment == 0 ?
+                   malloc(alloc_size) :
+                   aligned_alloc(global_list.alignment, alloc_size);
         lock.lock();
         global_list.blocks.push_back(mem);
         lock.unlock();
         for (auto i = 0ul; i < block_size; ++i)
-            list.push_back(mem + i * global_list.struct_size);
+            list.push_back(static_cast<char*>(mem) + i * global_list.struct_size);
     } else {
         auto end = global_list.list.end();
         auto beg = end - block_size;
@@ -404,7 +407,9 @@ void *zmq::buf_pool::alloc()
         return alloc_slow();
     }
 #else
-    return malloc(global_list.struct_size);
+    return global_list.alignment == 0 ?
+                   malloc(global_list.struct_size) :
+                   aligned_alloc(global_list.alignment, global_list.struct_size);
 #endif
 }
 
