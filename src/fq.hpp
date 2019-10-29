@@ -56,7 +56,6 @@ namespace zmq
         int recv (msg_t *msg_);
         int recvpipe (msg_t *msg_, pipe_t **pipe_);
         bool has_in ();
-        blob_t get_credential () const;
 
     private:
 
@@ -79,9 +78,6 @@ namespace zmq
         //  If true, part of a multipart message was already received, but
         //  there are following parts still waiting in the current pipe.
         bool more;
-
-        //  Holds credential after the last_acive_pipe has terminated.
-        blob_t saved_credential;
 
         fq_t (const fq_t&);
         const fq_t &operator = (const fq_t&);

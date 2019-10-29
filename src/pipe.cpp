@@ -113,11 +113,6 @@ zmq::blob_t zmq::pipe_t::get_identity ()
     return identity;
 }
 
-zmq::blob_t zmq::pipe_t::get_credential () const
-{
-    return credential;
-}
-
 bool zmq::pipe_t::check_read ()
 {
     if (unlikely (!in_active))
@@ -151,18 +146,9 @@ bool zmq::pipe_t::read (msg_t *msg_)
     if (unlikely (state != active && state != waiting_for_delimiter))
         return false;
 
-read_message:
     if (!inpipe->read (msg_)) {
         in_active = false;
         return false;
-    }
-
-    //  If this is a credential, save a copy and receive next message.
-    if (unlikely (msg_->is_credential ())) {
-        const unsigned char *data = static_cast <const unsigned char *> (msg_->data ());
-        credential = blob_t (data, msg_->size ());
-        msg_->close ();
-        goto read_message;
     }
 
     //  If delimiter was read, start termination process of the pipe.

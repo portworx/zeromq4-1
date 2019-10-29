@@ -64,7 +64,6 @@ void zmq::pair_t::xpipe_terminated (pipe_t *pipe_)
 {
     if (pipe_ == pipe) {
         if (last_in == pipe) {
-            saved_credential = last_in->get_credential ();
             last_in = NULL;
         }
         pipe = NULL;
@@ -132,7 +131,3 @@ bool zmq::pair_t::xhas_out ()
     return pipe->check_write ();
 }
 
-zmq::blob_t zmq::pair_t::get_credential () const
-{
-    return last_in? last_in->get_credential (): saved_credential;
-}

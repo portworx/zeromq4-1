@@ -87,8 +87,6 @@ namespace zmq
         void set_identity (const blob_t &identity_);
         blob_t get_identity ();
 
-        blob_t get_credential () const;
-
         //  Returns true if there is at least one message to read in the pipe.
         bool check_read ();
 
@@ -210,9 +208,6 @@ namespace zmq
 
         //  Identity of the writer. Used uniquely by the reader side.
         blob_t identity;
-
-        //  Pipe's credential.
-        blob_t credential;
 
         //  Returns true if the message is delimiter; false otherwise.
         static bool is_delimiter (const msg_t &msg_);

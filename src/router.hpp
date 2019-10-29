@@ -69,7 +69,6 @@ namespace zmq
 
         //  Rollback any message parts that were sent but not yet flushed.
         int rollback ();
-        blob_t get_credential () const;
 
         //  Receive peer id and update lookup map
         bool identify_peer (pipe_t *pipe_);

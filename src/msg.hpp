@@ -77,7 +77,6 @@ namespace zmq
 	    malloced = 4,	//  Message structure was malloced
 	    delimiter = 8,      //  Message is a delimiter
 	    pool_alloc = 16,    // memory was allocated from pool
-            credential = 32,
             identity = 64,
             shared = 128
         };
@@ -115,7 +114,6 @@ namespace zmq
         void reset_flags (unsigned char flags_);
 
         bool is_identity () const;
-        bool is_credential () const;
         bool is_delimiter () const;
         bool is_empty ();
 

@@ -837,7 +837,7 @@ void zmq::stream_engine_t::mechanism_ready ()
     }
 
     next_msg = &stream_engine_t::pull_and_encode;
-    process_msg = &stream_engine_t::write_credential;
+    process_msg = &stream_engine_t::decode_and_push;
 
     //  Compile metadata.
     typedef metadata_t::dict_t properties_t;
@@ -874,27 +874,6 @@ int zmq::stream_engine_t::push_msg_to_session (msg_t *msg_)
 
 int zmq::stream_engine_t::push_raw_msg_to_session (msg_t *msg_) {
     return push_msg_to_session(msg_);
-}
-
-int zmq::stream_engine_t::write_credential (msg_t *msg_)
-{
-    zmq_assert (mechanism != NULL);
-    zmq_assert (session != NULL);
-
-    const blob_t credential = mechanism->get_user_id ();
-    if (credential.size () > 0) {
-        msg_t msg;
-        msg.init_size (credential.size ());
-        memcpy (msg.data (), credential.data (), credential.size ());
-        msg.set_flags (msg_t::credential);
-        int rc = session->push_msg (&msg);
-        if (rc == -1) {
-            msg.close ();
-            return -1;
-        }
-    }
-    process_msg = &stream_engine_t::decode_and_push;
-    return decode_and_push (msg_);
 }
 
 int zmq::stream_engine_t::pull_and_encode (msg_t *msg_)
