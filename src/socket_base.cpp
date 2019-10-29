@@ -758,12 +758,6 @@ int zmq::socket_base_t::send (msg_t *msg_, int flags_)
         return -1;
     }
 
-    //  Check whether message passed to the function is valid.
-    if (unlikely (!msg_ || !msg_->check ())) {
-        errno = EFAULT;
-        return -1;
-    }
-
     //  Process pending commands, if any.
     int rc = process_commands (0, true);
     if (unlikely (rc != 0))
@@ -820,12 +814,6 @@ int zmq::socket_base_t::recv (msg_t *msg_, int flags_)
     //  Check whether the library haven't been shut down yet.
     if (unlikely (ctx_terminated)) {
         errno = ETERM;
-        return -1;
-    }
-
-    //  Check whether message passed to the function is valid.
-    if (unlikely (!msg_ || !msg_->check ())) {
-        errno = EFAULT;
         return -1;
     }
 

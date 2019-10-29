@@ -81,7 +81,6 @@ namespace zmq
             shared = 128
         };
 
-        bool check ();
         void init ();
         void init_size (size_t size_);
         void init_data (void *data_, size_t size_, msg_free_fn *ffn_,
@@ -115,7 +114,6 @@ namespace zmq
 
         bool is_identity () const;
         bool is_delimiter () const;
-        bool is_empty ();
 
         zmq_id get_id() { return u.base.id; };
 
@@ -134,8 +132,7 @@ namespace zmq
 		u.base.id = id;
 	}
     private:
-	void init_vsm();
-	void init_lsm(size_t size);
+        void init_lsm(size_t size);
 	iovec *lmsg_iov(int index);
 
         //  Size in bytes of the largest message that is still copied around
@@ -160,17 +157,6 @@ namespace zmq
             zmq::atomic_counter_t refcnt;
         };
 
-        //  Different message types.
-        enum type_t
-        {
-            type_min = 101,
-            //  empty message
-            type_empty = 101,
-            //  LMSG messages store the content in malloc-ed memory
-            type_lmsg = 102,
-            type_max = 102
-        };
-
         //  Note that fields shared between different message types are not
         //  moved to the parent class (msg_t). This way we get tighter packing
         //  of the data. Shared fields can be accessed via 'base' member of
@@ -180,16 +166,14 @@ namespace zmq
 		zmq_id id;
 		void *ptr_unused;
 		size_t size;
-                unsigned char unused [msg_t_size - (2 + 24)];
-		unsigned char type;
+                unsigned char unused [msg_t_size - (1 + 24)];
 		unsigned char flags;
             } base;
             struct {
 		zmq_id id;
                 content_t *content;
 		size_t size;	// total message size
-                unsigned char hdr [msg_t_size - (sizeof (size_t) + sizeof (content_t*) + 2 + 8)];
-                unsigned char type;
+                unsigned char hdr [msg_t_size - (sizeof (size_t) + sizeof (content_t*) + 1 + 8)];
                 unsigned char flags;
 
                 size_t hdr_size() const { return size - content->size; }

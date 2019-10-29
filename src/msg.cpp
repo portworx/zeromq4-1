@@ -51,21 +51,8 @@
 typedef char zmq_msg_size_check
     [2 * ((sizeof (zmq::msg_t) == sizeof (zmq_msg_t)) != 0) - 1];
 
-bool zmq::msg_t::check ()
-{
-     return u.base.type >= type_min && u.base.type <= type_max;
-}
-
-inline void zmq::msg_t::init_vsm()
-{
-    u.lmsg.size = 0;
-    u.lmsg.type = type_empty;
-    u.lmsg.flags = 0;
-}
-
 inline void zmq::msg_t::init_lsm(size_t size)
 {
-    u.lmsg.type = type_lmsg;
     u.lmsg.flags = 0;
     u.lmsg.id = 0;
     u.lmsg.size = size;
@@ -73,7 +60,9 @@ inline void zmq::msg_t::init_lsm(size_t size)
 
 void zmq::msg_t::init ()
 {
-    init_vsm();
+    u.lmsg.size = 0;
+    u.lmsg.content = nullptr;
+    u.lmsg.flags = 0;
 }
 
 void zmq::msg_t::alloc_memory(size_t alloc_size)
@@ -176,33 +165,26 @@ void zmq::msg_t::init_iov_content(zmq_content *content, iovec *iov, int iovcnt, 
 
 int zmq::msg_t::init_delimiter ()
 {
-    u.base.type = type_empty;
+    init();
     u.base.flags = delimiter;
-    u.base.id = 0;
     return 0;
 }
 
 void zmq::msg_t::close()
 {
-    if (u.base.type == type_empty)
-        return;
-
-    assert(u.base.type == type_lmsg);
-
-    //  Make the message invalid.
-    u.base.type = 0;
-
     // Save a copy of fields since message can be destroyed once free function is called.
     auto flags = u.lmsg.flags;
     auto content = u.lmsg.content;
 
+    if (content == nullptr)
+        return;
+
+    //  Make the message invalid.
+    u.lmsg.content = nullptr;
+
     //  If the content is not shared, or if it is shared and the reference
     //  count has dropped to zero, deallocate it.
     if (!(flags & msg_t::shared) || !content->refcnt.sub(1)) {
-
-        //  We used "placement new" operator to initialize the reference
-        //  counter so we call the destructor explicitly now.
-        content->refcnt.~atomic_counter_t();
         if (content->ffn)
             content->ffn(content->data_iov->iov_base, content->hint);
 
@@ -233,15 +215,16 @@ void zmq::msg_t::copy (msg_t &src_)
 {
     close ();
 
-    if (src_.u.lmsg.type == type_lmsg) {
-        //  One reference is added to shared messages. Non-shared messages
-        //  are turned into shared messages and reference count is set to 2.
-        if (src_.u.lmsg.flags & msg_t::shared)
-            src_.u.lmsg.content->refcnt.add(1);
-        else {
-            src_.u.lmsg.flags |= msg_t::shared;
-            src_.u.lmsg.content->refcnt.set(2);
-        }
+    if (src_.u.lmsg.content == nullptr)
+        return;
+
+    //  One reference is added to shared messages. Non-shared messages
+    //  are turned into shared messages and reference count is set to 2.
+    if (src_.u.lmsg.flags & msg_t::shared)
+        src_.u.lmsg.content->refcnt.add(1);
+    else {
+        src_.u.lmsg.flags |= msg_t::shared;
+        src_.u.lmsg.content->refcnt.set(2);
     }
 
     *this = src_;
@@ -303,11 +286,6 @@ bool zmq::msg_t::is_identity () const
 bool zmq::msg_t::is_delimiter () const
 {
     return (u.base.flags & delimiter) != 0;
-}
-
-bool zmq::msg_t::is_empty ()
-{
-    return u.base.type == type_empty;
 }
 
 void *zmq::msg_t::push(size_t size_)
