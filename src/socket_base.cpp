@@ -758,11 +758,6 @@ int zmq::socket_base_t::send (msg_t *msg_, int flags_)
         return -1;
     }
 
-    //  Process pending commands, if any.
-    int rc = process_commands (0, true);
-    if (unlikely (rc != 0))
-        return -1;
-
     //  Clear any user-visible flags that are set on the message.
     msg_->reset_flags (msg_t::more);
 
@@ -770,43 +765,7 @@ int zmq::socket_base_t::send (msg_t *msg_, int flags_)
     if (flags_ & ZMQ_SNDMORE)
         msg_->set_flags (msg_t::more);
 
-    //  Try to send the message.
-    rc = xsend (msg_);
-    if (rc == 0)
-        return 0;
-    if (unlikely (errno != EAGAIN))
-        return -1;
-
-    //  In case of non-blocking send we'll simply propagate
-    //  the error - including EAGAIN - up the stack.
-    if (flags_ & ZMQ_DONTWAIT || options.sndtimeo == 0)
-        return -1;
-
-    //  Compute the time when the timeout should occur.
-    //  If the timeout is infinite, don't care.
-    int timeout = options.sndtimeo;
-    uint64_t end = timeout < 0 ? 0 : (clock.now_ms () + timeout);
-
-    //  Oops, we couldn't send the message. Wait for the next
-    //  command, process it and try to send the message again.
-    //  If timeout is reached in the meantime, return EAGAIN.
-    while (true) {
-        if (unlikely (process_commands (timeout, false) != 0))
-            return -1;
-        rc = xsend (msg_);
-        if (rc == 0)
-            break;
-        if (unlikely (errno != EAGAIN))
-            return -1;
-        if (timeout > 0) {
-            timeout = (int) (end - clock.now_ms ());
-            if (timeout <= 0) {
-                errno = EAGAIN;
-                return -1;
-            }
-        }
-    }
-    return 0;
+    return xsend (msg_);
 }
 
 int zmq::socket_base_t::recv (msg_t *msg_, int flags_)
