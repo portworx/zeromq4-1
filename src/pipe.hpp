@@ -71,7 +71,7 @@ namespace zmq
         friend int pipepair (zmq::object_t *parents_ [2], zmq::pipe_t* pipes_ [2]);
 
     public:
-        void (*recv)(void *arg, zmq_msg_t *msg_);
+        void (*recv)(void *arg, zmq::msg_t *msg_);
         void *recv_arg;
 
         //  Specifies the object to send events to.

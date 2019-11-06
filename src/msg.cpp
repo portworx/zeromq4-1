@@ -97,7 +97,7 @@ void do_nothing(void *, void *) {}
 
 }
 
-void zmq::msg_t::init_data (void *data_, size_t size_, msg_free_fn *ffn_,
+void zmq::msg_t::init_data (const void *data_, size_t size_, msg_free_fn *ffn_,
     void *hint_)
 {
     if (ffn_ == nullptr) {
@@ -110,7 +110,7 @@ void zmq::msg_t::init_data (void *data_, size_t size_, msg_free_fn *ffn_,
 
     u.lmsg.content->data_iov = (iovec *) (u.lmsg.content + 1);
     u.lmsg.content->iovcnt = 1;
-    u.lmsg.content->data_iov->iov_base = data_;
+    u.lmsg.content->data_iov->iov_base = const_cast<void*>(data_);
     u.lmsg.content->data_iov->iov_len = size_;
     u.lmsg.content->size = size_;
     u.lmsg.content->ffn = ffn_;

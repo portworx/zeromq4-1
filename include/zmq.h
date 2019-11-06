@@ -332,8 +332,12 @@ ZMQ_EXPORT void *zmq_msg_push(zmq_msg_t *msg, size_t len);
 #define ZMQ_RECV_CALLBACK 70
 #define ZMQ_DECODER_OPS 71
 
+namespace zmq {
+class msg_t;
+}
+
 struct zmq_recv_callback_arg {
-        void (*func)(void *ctx, zmq_msg_t *msg);
+        void (*func)(void *ctx, zmq::msg_t *msg);
         void *ctx;
 };
 
@@ -350,7 +354,7 @@ struct decoder_ops {
         int (*decode)(void *ctx, const unsigned char *data_, size_t size_,
                 size_t *processed);
 
-        zmq_msg_t *(*msg)(void *ctx);
+        zmq::msg_t *(*msg)(void *ctx);
 };
 
 /*  Message options                                                           */

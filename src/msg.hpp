@@ -83,7 +83,7 @@ namespace zmq
 
         void init ();
         void init_size (size_t size_);
-        void init_data (void *data_, size_t size_, msg_free_fn *ffn_,
+        void init_data (const void *data_, size_t size_, msg_free_fn *ffn_,
             void *hint_);
 	void init_content(zmq_content *content_, size_t size_,
 		msg_free_fn *ffn_,
@@ -107,15 +107,15 @@ namespace zmq
 
         int num_bufs();
         size_t buf_size(int index);
-        size_t size () { return u.base.size; };
-        unsigned char flags () { return u.base.flags; };
+        size_t size () const { return u.base.size; };
+        unsigned char flags () const { return u.base.flags; };
         void set_flags (unsigned char flags_);
         void reset_flags (unsigned char flags_);
 
         bool is_identity () const;
         bool is_delimiter () const;
 
-        zmq_id get_id() { return u.base.id; };
+        zmq_id get_id() const { return u.base.id; };
 
 	void set_id(const blob_t &blob)
 	{
