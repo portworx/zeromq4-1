@@ -237,37 +237,6 @@ void *zmq::msg_t::data ()
            u.lmsg.content->data_iov[0].iov_base;
 }
 
-void *zmq::msg_t::buf(int index)
-{
-    size_t hdr_size = u.lmsg.hdr_size();
-    int off = hdr_size ? 1 : 0;
-    zmq_assert(index - off < u.lmsg.content->iovcnt);
-    if (!index) {
-        return hdr_size ? u.lmsg.hdr + sizeof(u.lmsg.hdr) - hdr_size :
-               u.lmsg.content->data_iov[0].iov_base;
-    } else {
-        return u.lmsg.content->data_iov[index - off].iov_base;
-    }
-}
-
-size_t zmq::msg_t::buf_size(int index)
-{
-    size_t hdr_size = u.lmsg.hdr_size();
-    int off = hdr_size ? 1 : 0;
-    zmq_assert(index - off < u.lmsg.content->iovcnt);
-    if (!index) {
-        return hdr_size ? hdr_size :
-               u.lmsg.content->data_iov[0].iov_len;
-    } else {
-        return u.lmsg.content->data_iov[index - off].iov_len;
-    }
-}
-
-int zmq::msg_t::num_bufs()
-{
-     return (u.lmsg.hdr_size() > 0 ? 1 : 0) + u.lmsg.content->iovcnt;
-}
-
 void zmq::msg_t::set_flags (unsigned char flags_)
 {
     u.base.flags |= flags_;

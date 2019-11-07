@@ -63,12 +63,6 @@ namespace zmq
     {
     public:
 
-        enum error_reason_t {
-            protocol_error,
-            connection_error,
-            timeout_error
-        };
-
         stream_engine_t (fd_t fd_, const options_t &options_,
                          const std::string &endpoint);
         ~stream_engine_t ();

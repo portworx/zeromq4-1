@@ -51,8 +51,6 @@
 #include "stream_engine.hpp"
 #include "io_thread.hpp"
 #include "session_base.hpp"
-#include "v1_encoder.hpp"
-#include "v1_decoder.hpp"
 #include "v2_encoder.hpp"
 #include "v2_decoder.hpp"
 #include "null_mechanism.hpp"
@@ -279,8 +277,6 @@ void zmq::stream_engine_t::in_event ()
         if (!handshake ())
             return;
 
-    zmq_assert (decoder || (options.has_decoder_ops && decoder_ctx));
-
     //  If there has been an I/O error, stop polling.
     if (input_stopped) {
         rm_fd (handle);
@@ -288,66 +284,82 @@ void zmq::stream_engine_t::in_event ()
         return;
     }
 
-    //  If there's no data to process in the buffer...
-    if (!insize) {
-
-        //  Retrieve the buffer and read as much data as possible.
-        //  Note that buffer can be arbitrarily large. However, we assume
-        //  the underlying TCP layer has fixed buffer size and thus the
-        //  number of bytes read will be always limited.
-        size_t bufsize = 0;
-	if (!options.has_decoder_ops) {
-		decoder->get_buffer (&inpos, &bufsize);
-	} else {
-		options.dec_ops.get_buffer(decoder_ctx, &inpos, &bufsize);
-	}
-
-        const int rc = tcp_read (s, inpos, bufsize);
-        if (rc == 0) {
-            error (connection_error);
-            return;
+    if (options.has_decoder_ops) {
+        while (true) {
+            decoder_ops::read_result res;
+            options.dec_ops.read(decoder_ctx, s, &res);
+            if (res.msg != nullptr) {
+                if ((this->*process_msg)(res.msg) != 0) {
+                    if (errno != EAGAIN) {
+                        error(protocol_error);
+                        return;
+                    }
+                    input_stopped = true;
+                    reset_pollin (handle);
+                    break;
+                }
+                if (res.last)
+                    break;
+            } else if (res.error == no_error) {
+                // no more messages available
+                break;
+            } else {
+                error(res.error);
+                return;
+            }
         }
-        if (rc == -1) {
-            if (errno != EAGAIN)
+    } else {
+        //  If there's no data to process in the buffer...
+        if (!insize) {
+
+            //  Retrieve the buffer and read as much data as possible.
+            //  Note that buffer can be arbitrarily large. However, we assume
+            //  the underlying TCP layer has fixed buffer size and thus the
+            //  number of bytes read will be always limited.
+            size_t bufsize = 0;
+            decoder->get_buffer (&inpos, &bufsize);
+
+            const int rc = tcp_read (s, inpos, bufsize);
+            if (rc == 0) {
                 error (connection_error);
-            return;
+                return;
+            }
+            if (rc == -1) {
+                if (errno != EAGAIN)
+                    error (connection_error);
+                return;
+            }
+
+            //  Adjust input size
+            insize = static_cast <size_t> (rc);
         }
 
-        //  Adjust input size
-        insize = static_cast <size_t> (rc);
-    }
+        int rc = 0;
+        size_t processed = 0;
 
-    int rc = 0;
-    size_t processed = 0;
-
-    while (insize > 0) {
-	if (!options.has_decoder_ops) {
-		rc = decoder->decode (inpos, insize, processed);
-	} else {
-		rc = options.dec_ops.decode(decoder_ctx, inpos, insize,
-					    &processed);
-	}
-        zmq_assert (processed <= insize);
-        inpos += processed;
-        insize -= processed;
-        if (rc == 0 || rc == -1)
-            break;
-	msg_t *msg = !options.has_decoder_ops ?
-		decoder->msg() : (msg_t *)options.dec_ops.msg(decoder_ctx);
-        rc = (this->*process_msg) (msg);
-        if (rc == -1)
-            break;
-    }
-
-    //  Tear down the connection if we have failed to decode input data
-    //  or the session has rejected the message.
-    if (rc == -1) {
-        if (errno != EAGAIN) {
-            error (protocol_error);
-            return;
+        while (insize > 0) {
+            rc = decoder->decode (inpos, insize, processed);
+            zmq_assert (processed <= insize);
+            inpos += processed;
+            insize -= processed;
+            if (rc == 0 || rc == -1)
+                break;
+            msg_t *msg = decoder->msg();
+            rc = (this->*process_msg) (msg);
+            if (rc == -1)
+                break;
         }
-        input_stopped = true;
-        reset_pollin (handle);
+
+        //  Tear down the connection if we have failed to decode input data
+        //  or the session has rejected the message.
+        if (rc == -1) {
+            if (errno != EAGAIN) {
+                error (protocol_error);
+                return;
+            }
+            input_stopped = true;
+            reset_pollin (handle);
+        }
     }
 
     session->flush ();
@@ -462,49 +474,65 @@ void zmq::stream_engine_t::restart_input ()
     zmq_assert (session != NULL);
     zmq_assert (decoder != NULL);
 
+    if (options.has_decoder_ops) {
+        while (true) {
+            decoder_ops::read_result res;
+            options.dec_ops.read(decoder_ctx, s, &res);
+            if (res.msg != nullptr) {
+                if ((this->*process_msg)(res.msg) != 0) {
+                    error(protocol_error);
+                    return;
+                }
+            } else if (res.error == no_error) {
+                input_stopped = false;
+                set_pollin (handle);
+                session->flush ();
 
-    int rc = (this->*process_msg) (!options.has_decoder_ops ?
-		   decoder->msg () : (msg_t *)options.dec_ops.msg(decoder_ctx));
-    if (rc == -1) {
-        if (errno == EAGAIN)
+                //  Speculative read.
+                in_event ();
+                break;
+            } else {
+                error(res.error);
+            }
+        }
+    } else {
+        int rc = (this->*process_msg) (decoder->msg ());
+        if (rc == -1) {
+            if (errno == EAGAIN)
+                session->flush ();
+            else
+                error (protocol_error);
+            return;
+        }
+
+        while (insize > 0) {
+            size_t processed = 0;
+            rc = decoder->decode (inpos, insize, processed);
+            zmq_assert (processed <= insize);
+            inpos += processed;
+            insize -= processed;
+            if (rc == 0 || rc == -1)
+                break;
+            msg_t *msg = decoder->msg();
+            rc = (this->*process_msg) (msg);
+            if (rc == -1)
+                break;
+        }
+
+        if (rc == -1 && errno == EAGAIN)
             session->flush ();
-        else
+        else if (io_error)
+            error (connection_error);
+        else if (rc == -1)
             error (protocol_error);
-        return;
-    }
+        else {
+            input_stopped = false;
+            set_pollin (handle);
+            session->flush ();
 
-    while (insize > 0) {
-        size_t processed = 0;
-        rc = !options.has_decoder_ops ?
-	     decoder->decode (inpos, insize, processed) :
-		options.dec_ops.decode(decoder_ctx, inpos, insize, &processed);
-        zmq_assert (processed <= insize);
-        inpos += processed;
-        insize -= processed;
-        if (rc == 0 || rc == -1)
-            break;
-	msg_t *msg = !options.has_decoder_ops ?
-		decoder->msg() : (msg_t *)options.dec_ops.msg(decoder_ctx);
-        rc = (this->*process_msg) (msg);
-        if (rc == -1)
-            break;
-    }
-
-    if (rc == -1 && errno == EAGAIN)
-        session->flush ();
-    else
-    if (io_error)
-        error (connection_error);
-    else
-    if (rc == -1)
-        error (protocol_error);
-    else {
-        input_stopped = false;
-        set_pollin (handle);
-        session->flush ();
-
-        //  Speculative read.
-        in_event ();
+            //  Speculative read.
+            in_event ();
+        }
     }
 }
 

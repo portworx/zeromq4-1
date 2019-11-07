@@ -29,6 +29,7 @@
 #define __ZMQ_H_INCLUDED__
 
 /*  Version macros for compile-time API version detection                     */
+
 #define ZMQ_VERSION_MAJOR 4
 #define ZMQ_VERSION_MINOR 1
 #define ZMQ_VERSION_PATCH 6
@@ -333,25 +334,45 @@ ZMQ_EXPORT void *zmq_msg_push(zmq_msg_t *msg, size_t len);
 #define ZMQ_DECODER_OPS 71
 
 struct zmq_recv_callback_arg {
-        void (*func)(void *ctx, zmq_msg_t *msg);
-        void *ctx;
+    void (*func)(void *ctx, zmq_msg_t *msg);
+
+    void *ctx;
 };
+
+#ifdef __cplusplus
+
+namespace zmq {
+
+enum error_reason_t {
+    no_error,
+    protocol_error,
+    connection_error,
+    timeout_error
+};
+
+class msg_t;
+
+}
 
 struct decoder_ops {
-        void *(*create)(size_t buf_size);
-        void (*destroy)(void *ctx);
+    struct read_result {
+        zmq::msg_t *msg;  // message read from connection
+        zmq::error_reason_t error;      // if != 0, error reason
+        bool last;
+    };
 
-        void (*get_buffer)(void *ctx, unsigned char **data_, size_t *size_);
+    void *(*create)(size_t buf_size);
 
-        //  Decodes data pointed to by data_.
-        //  When a message is decoded, 1 is returned.
-        //  When the decoder needs more data, 0 is returnd.
-        //  On error, -1 is returned and errno is set accordingly.
-        int (*decode)(void *ctx, const unsigned char *data_, size_t size_,
-                size_t *processed);
+    void (*destroy)(void *ctx);
 
-        zmq_msg_t *(*msg)(void *ctx);
+    // Get the next message, reading from connection socket if necessary.
+    // Return msg != nullptr if message was read successfully.
+    // Return msg == nullptr and error == 0 if not enough data read.
+    // Return msg == nullptr and error != 0 in case of error.
+    void (*read)(void *ctx, int sock, read_result *res);
 };
+
+#endif
 
 /*  Message options                                                           */
 #define ZMQ_MORE 1

@@ -96,8 +96,8 @@ namespace zmq
         void move (msg_t &src_);
         void copy (msg_t &src_);
         void *data ();
-        void *buf(int index);
-	void *push(size_t size_);
+
+        void *push(size_t size_);
 	void *pull(size_t size_);
 	void add_to_iovec_buf(iovec_buf &buf);
 
@@ -105,9 +105,7 @@ namespace zmq
 
 	int iovcnt() const { return u.lmsg.content->iovcnt; }
 
-        int num_bufs();
-        size_t buf_size(int index);
-        size_t size () { return u.base.size; };
+	size_t size () { return u.base.size; };
         unsigned char flags () { return u.base.flags; };
         void set_flags (unsigned char flags_);
         void reset_flags (unsigned char flags_);
@@ -131,14 +129,6 @@ namespace zmq
 	{
 		u.base.id = id;
 	}
-    private:
-        void init_lsm(size_t size);
-	iovec *lmsg_iov(int index);
-
-        //  Size in bytes of the largest message that is still copied around
-        //  rather than being reference-counted.
-        enum { msg_t_size = 64 };
-        enum { max_vsm_size = msg_t_size - (sizeof(iovec) + sizeof (metadata_t *) + 2 + 8) };
 
         //  Shared message buffer. Message data are either allocated in one
         //  continuous block along with this structure - thus avoiding one
@@ -157,7 +147,14 @@ namespace zmq
             zmq::atomic_counter_t refcnt;
         };
 
-        //  Note that fields shared between different message types are not
+    private:
+        void init_lsm(size_t size);
+
+        //  Size in bytes of the largest message that is still copied around
+        //  rather than being reference-counted.
+        enum { msg_t_size = 64 };
+
+	    //  Note that fields shared between different message types are not
         //  moved to the parent class (msg_t). This way we get tighter packing
         //  of the data. Shared fields can be accessed via 'base' member of
         //  the union.
