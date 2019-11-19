@@ -91,43 +91,43 @@ namespace zmq
         void init_iov(iovec *iov, int iovcnt, size_t size, msg_free_fn *ffn_, void *hint);
 	void init_iov_content(zmq_content *content, iovec *iov, int iovcnt, size_t size,
 		msg_free_fn *ffn_, void *hint);
-        int init_delimiter ();
+        void init_delimiter ();
         void close ();
         void move (msg_t &src_);
         void copy (msg_t &src_);
         void *data ();
 
-        void *push(size_t size_);
-	void *pull(size_t size_);
+        void *push(size_t size);
+	void *pull(size_t size);
 	void add_to_iovec_buf(iovec_buf &buf);
 
-        iovec *iov() const { return u.lmsg.content->data_iov; };
+        iovec *iov() const { return content_->data_iov; };
 
-	int iovcnt() const { return u.lmsg.content->iovcnt; }
+	int iovcnt() const { return content_->iovcnt; }
 
-	size_t size () { return u.base.size; };
-        unsigned char flags () { return u.base.flags; };
-        void set_flags (unsigned char flags_);
-        void reset_flags (unsigned char flags_);
+	size_t size () const { return size_; };
+        unsigned char flags () const { return flags_; };
+        void set_flags (unsigned char flags) { flags_ |= flags; }
+        void reset_flags (unsigned char flags) { flags_ &= ~flags; };
 
         bool is_identity () const;
         bool is_delimiter () const;
 
-        zmq_id get_id() { return u.base.id; };
+        zmq_id get_id() { return id_; };
 
 	void set_id(const blob_t &blob)
 	{
-		zmq::set_id(u.base.id, blob.data(), blob.size());
+		zmq::set_id(id_, blob.data(), blob.size());
 	}
 
 	void set_id(size_t len, const void *data)
 	{
-		zmq::set_id(u.base.id, data, len);
+		zmq::set_id(id_, data, len);
 	}
 
 	void set_id(zmq_id id)
 	{
-		u.base.id = id;
+		id_ = id;
 	}
 
         //  Shared message buffer. Message data are either allocated in one
@@ -154,28 +154,13 @@ namespace zmq
         //  rather than being reference-counted.
         enum { msg_t_size = 64 };
 
-	    //  Note that fields shared between different message types are not
-        //  moved to the parent class (msg_t). This way we get tighter packing
-        //  of the data. Shared fields can be accessed via 'base' member of
-        //  the union.
-        union {
-            struct {
-		zmq_id id;
-		void *ptr_unused;
-		size_t size;
-                unsigned char unused [msg_t_size - (1 + 24)];
-		unsigned char flags;
-            } base;
-            struct {
-		zmq_id id;
-                content_t *content;
-		size_t size;	// total message size
-                unsigned char hdr [msg_t_size - (sizeof (size_t) + sizeof (content_t*) + 1 + 8)];
-                unsigned char flags;
+        zmq_id id_;
+        content_t *content_;
+        size_t size_;	// total message size
+        unsigned char hdr_ [msg_t_size - (sizeof (size_t) + sizeof (content_t*) + 1 + 8)];
+        unsigned char flags_;
 
-                size_t hdr_size() const { return size - content->size; }
-            } lmsg;
-        } u;
+        size_t hdr_size() const { return size() - content_->size; }
 
         // allocate memory from pool or global malloc depending on size
         void alloc_memory(size_t alloc_size);
