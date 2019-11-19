@@ -924,7 +924,7 @@ int zmq::stream_engine_t::decode_and_push (msg_t *msg_)
     if (options.recv_callback && id_ != 0) {
         if (!(msg_->flags() & msg_t::more)) {
             msg_->set_id(id_);
-            options.recv_callback(options.recv_callback_arg, (zmq_msg_t *)msg_);
+            options.recv_callback(options.recv_callback_arg, msg_);
             return 0;
         } else {
             // disable callbacks if sender uses multi-frame messages

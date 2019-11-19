@@ -41,6 +41,7 @@
 #include "../include/zmq_id.h"
 #include "blob.hpp"
 #include "err.hpp"
+#include "v2_protocol.hpp"
 
 //  Signature for free function to deallocate the message content.
 //  Note that it has to be declared as "C" so that it is the same as
@@ -72,9 +73,11 @@ namespace zmq
         //  Message flags.
         enum
         {
-            more = 1,           //  Followed by more parts
-            command = 2,        //  Command frame (see ZMTP spec)
-	    malloced = 4,	//  Message structure was malloced
+            //  (1) Followed by more parts (see ZMTP spec)
+            more = zmq::v2_protocol_t::more_flag,
+            malloced = 2,	//  Message structure was malloced
+            // (4) Command frame (see ZMTP spec)
+            command = zmq::v2_protocol_t::command_flag,
 	    delimiter = 8,      //  Message is a delimiter
 	    pool_alloc = 16,    // memory was allocated from pool
             identity = 64,
@@ -113,7 +116,7 @@ namespace zmq
         bool is_identity () const;
         bool is_delimiter () const;
 
-        zmq_id get_id() { return id_; };
+        zmq_id get_id() const { return id_; };
 
 	void set_id(const blob_t &blob)
 	{

@@ -158,6 +158,15 @@ void *zmq_ctx_new (void)
     return ctx;
 }
 
+namespace zmq {
+
+ctx_t *ctx_new()
+{
+    return static_cast<ctx_t*>(zmq_ctx_new());
+}
+
+}
+
 int zmq_ctx_term (void *ctx_)
 {
     if (!ctx_ || !((zmq::ctx_t*) ctx_)->check_tag ()) {

@@ -192,6 +192,19 @@ ZMQ_EXPORT void zmq_version (int *major, int *minor, int *patch);
 #define ZMQ_THREAD_SCHED_POLICY_DFLT -1
 
 ZMQ_EXPORT void *zmq_ctx_new (void);
+
+#ifdef __cplusplus
+
+namespace zmq {
+
+class ctx_t;
+
+ctx_t *ctx_new();
+
+}
+
+#endif
+
 ZMQ_EXPORT int zmq_ctx_term (void *context);
 ZMQ_EXPORT int zmq_ctx_shutdown (void *ctx_);
 ZMQ_EXPORT int zmq_ctx_set (void *context, int option, int optval);
@@ -333,15 +346,17 @@ ZMQ_EXPORT void *zmq_msg_push(zmq_msg_t *msg, size_t len);
 #define ZMQ_RECV_CALLBACK 70
 #define ZMQ_DECODER_OPS 71
 
-struct zmq_recv_callback_arg {
-    void (*func)(void *ctx, zmq_msg_t *msg);
-
-    void *ctx;
-};
-
 #ifdef __cplusplus
 
 namespace zmq {
+
+class msg_t;
+
+struct recv_callback_arg {
+	void (*func)(void *ctx, zmq::msg_t *msg);
+
+	void *ctx;
+};
 
 enum error_reason_t {
     no_error,
@@ -349,8 +364,6 @@ enum error_reason_t {
     connection_error,
     timeout_error
 };
-
-class msg_t;
 
 }
 
