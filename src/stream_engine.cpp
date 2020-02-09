@@ -1080,6 +1080,8 @@ zmq::iovec_buf::~iovec_buf()
 void zmq::iovec_buf::reset()
 {
 	iov.clear();
+	if (next_msg == -1)
+		next_msg = 0;
 	for (;next_msg < msgs.size(); ++next_msg)
 		msgs[next_msg].close();
 	msgs.clear();
