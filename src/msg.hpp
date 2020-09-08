@@ -150,6 +150,8 @@ namespace zmq
             zmq::atomic_counter_t refcnt;
         };
 
+    	size_t hdr_size() const { return size() - content_->size; }
+
     private:
         void init_lsm(size_t size);
 
@@ -162,8 +164,6 @@ namespace zmq
         size_t size_;	// total message size
         unsigned char hdr_ [msg_t_size - (sizeof (size_t) + sizeof (content_t*) + 1 + 8)];
         unsigned char flags_;
-
-        size_t hdr_size() const { return size() - content_->size; }
 
         // allocate memory from pool or global malloc depending on size
         void alloc_memory(size_t alloc_size);
