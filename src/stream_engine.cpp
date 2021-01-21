@@ -814,9 +814,10 @@ int zmq::stream_engine_t::process_handshake_command (msg_t *msg_)
 	    if (!options.has_decoder_ops) {
 		    msg_->init();
 	    }
-        if (mechanism->status () == mechanism_t::ready)
+        if (mechanism->status () == mechanism_t::ready) {
             mechanism_ready ();
-        else
+        }
+	else
         if (mechanism->status () == mechanism_t::error) {
             errno = EPROTO;
             return -1;
@@ -850,6 +851,8 @@ void zmq::stream_engine_t::mechanism_ready ()
         mechanism->peer_identity (&identity);
         if (sizeof(id_) - 1 >= identity.size()) {
             set_id(id_, identity.data(), identity.size());
+	    if (id_ > 0 && options.accept_callback)
+                options.accept_callback(options.accept_callback_arg, id_, endpoint.c_str());
         }
 
         const int rc = session->push_msg (&identity);

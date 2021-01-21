@@ -188,6 +188,9 @@ namespace zmq
 
         bool has_decoder_ops;
         decoder_ops dec_ops;
+
+	accept_callback_fn accept_callback; 
+        void *accept_callback_arg;
     };
 }
 
