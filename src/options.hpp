@@ -191,6 +191,9 @@ namespace zmq
 
 	accept_callback_fn accept_callback;
         void *accept_callback_arg;
+
+	disconnect_callback_fn disconnect_callback;
+        void *disconnect_callback_arg;
     };
 }
 

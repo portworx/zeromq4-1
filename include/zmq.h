@@ -225,6 +225,7 @@ ZMQ_EXPORT int zmq_ctx_destroy (void *context);
  */
 typedef union zmq_msg_t { unsigned char _ [64]; void *p; } zmq_msg_t;
 typedef void (*accept_callback_fn)(void *, zmq_id, const char *);
+typedef void (*disconnect_callback_fn)(void *, zmq_id);
 
 struct zmq_content {
         void *_private[7];
@@ -347,6 +348,7 @@ ZMQ_EXPORT void *zmq_msg_push(zmq_msg_t *msg, size_t len);
 #define ZMQ_RECV_CALLBACK 70
 #define ZMQ_DECODER_OPS 71
 #define ZMQ_ACCEPT_CALLBACK 72
+#define ZMQ_DISCONNECT_CALLBACK 73
 
 #ifdef __cplusplus
 
@@ -362,6 +364,12 @@ struct recv_callback_arg {
 
 struct accept_callback_arg {
 	void (*func)(void *ctx, zmq_id id, const char *addr);
+
+	void *ctx;
+};
+
+struct disconnect_callback_arg {
+	void (*func)(void *ctx, zmq_id id);
 
 	void *ctx;
 };

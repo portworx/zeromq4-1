@@ -70,7 +70,9 @@ zmq::options_t::options_t () :
     recv_callback_arg(NULL),
     has_decoder_ops(false),
     accept_callback(NULL),
-    accept_callback_arg(NULL)
+    accept_callback_arg(NULL),
+    disconnect_callback(NULL),
+    disconnect_callback_arg(NULL)
 {
     memset (curve_public_key, 0, CURVE_KEYSIZE);
     memset (curve_secret_key, 0, CURVE_KEYSIZE);

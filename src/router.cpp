@@ -591,6 +591,17 @@ int
 zmq::px_server::xsetsockopt(int option_, const void *optval_, size_t optvallen_)
 {
     switch (option_) {
+    case ZMQ_DISCONNECT_CALLBACK: {
+        if (optvallen_ != sizeof(zmq::disconnect_callback_arg)) {
+            errno = EINVAL;
+            return -1;
+        }
+        const zmq::disconnect_callback_arg *arg =
+                reinterpret_cast<const zmq::disconnect_callback_arg *>(optval_);
+        options.disconnect_callback = arg->func;
+        options.disconnect_callback_arg = arg->ctx;
+        return 0;
+    }
     case ZMQ_ACCEPT_CALLBACK: {
         if (optvallen_ != sizeof(zmq::accept_callback_arg)) {
             errno = EINVAL;

@@ -980,6 +980,10 @@ void zmq::stream_engine_t::error (error_reason_t reason)
     session->flush ();
     session->engine_error (reason);
     unplug ();
+
+    if (id_ > 0 && options.disconnect_callback)
+        options.disconnect_callback(options.disconnect_callback_arg, id_);
+
     delete this;
 }
 
