@@ -224,8 +224,6 @@ ZMQ_EXPORT int zmq_ctx_destroy (void *context);
  * SPARC and ARM
  */
 typedef union zmq_msg_t { unsigned char _ [64]; void *p; } zmq_msg_t;
-typedef void (*accept_callback_fn)(void *, zmq_id, const char *);
-typedef void (*disconnect_callback_fn)(void *, zmq_id);
 
 struct zmq_content {
         void *_private[7];
@@ -356,21 +354,22 @@ namespace zmq {
 
 class msg_t;
 
-struct recv_callback_arg {
-	void (*func)(void *ctx, zmq::msg_t *msg);
+typedef void (*recv_callback_fn)(void *ctx, zmq::msg_t *msg);
+typedef void (*accept_callback_fn)(void *ctx, zmq_id id, const char *addr);
+typedef void (*disconnect_callback_fn)(void *ctx, zmq_id id);
 
+struct recv_callback_arg {
+	recv_callback_fn func;
 	void *ctx;
 };
 
 struct accept_callback_arg {
-	void (*func)(void *ctx, zmq_id id, const char *addr);
-
+	accept_callback_fn func;
 	void *ctx;
 };
 
 struct disconnect_callback_arg {
-	void (*func)(void *ctx, zmq_id id);
-
+	disconnect_callback_fn func;
 	void *ctx;
 };
 
