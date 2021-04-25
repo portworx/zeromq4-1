@@ -343,10 +343,8 @@ ZMQ_EXPORT void *zmq_msg_push(zmq_msg_t *msg, size_t len);
 #define ZMQ_HANDSHAKE_IVL 66
 #define ZMQ_SOCKS_PROXY 68
 #define ZMQ_XPUB_NODROP 69
-#define ZMQ_RECV_CALLBACK 70
+#define ZMQ_CALLBACK 70
 #define ZMQ_DECODER_OPS 71
-#define ZMQ_ACCEPT_CALLBACK 72
-#define ZMQ_DISCONNECT_CALLBACK 73
 
 #ifdef __cplusplus
 
@@ -357,20 +355,17 @@ class msg_t;
 typedef void (*recv_callback_fn)(void *ctx, zmq::msg_t *msg);
 typedef void (*accept_callback_fn)(void *ctx, zmq_id id, const char *addr);
 typedef void (*disconnect_callback_fn)(void *ctx, zmq_id id);
+typedef void (*connrefused_callback_fn)(void *ctx, zmq_id id);
 
-struct recv_callback_arg {
-	recv_callback_fn func;
-	void *ctx;
-};
-
-struct accept_callback_arg {
-	accept_callback_fn func;
-	void *ctx;
-};
-
-struct disconnect_callback_arg {
-	disconnect_callback_fn func;
-	void *ctx;
+struct zmq_callback_arg {
+	recv_callback_fn recv_callback = NULL;
+	void *recv_ctx = NULL;
+	accept_callback_fn accept_callback = NULL;
+	void *accept_ctx = NULL;
+	disconnect_callback_fn disconnect_callback = NULL;
+	void *disconnect_ctx = NULL;
+	connrefused_callback_fn connrefused_callback = NULL;
+	void *connrefused_ctx = NULL;
 };
 
 enum error_reason_t {

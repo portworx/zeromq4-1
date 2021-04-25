@@ -77,7 +77,14 @@ int zmq::dealer_t::xsetsockopt (int option_, const void *optval_,
                 return 0;
             }
             break;
-
+	case ZMQ_CALLBACK:
+	    if (optvallen_ == sizeof(zmq::zmq_callback_arg)) {
+                const zmq::zmq_callback_arg *arg =
+                    reinterpret_cast<const zmq::zmq_callback_arg *>(optval_);
+		options.zmq_callback = *arg;
+                return 0;
+            }
+            break;
         default:
             break;
     }

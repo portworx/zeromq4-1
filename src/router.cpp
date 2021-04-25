@@ -591,39 +591,6 @@ int
 zmq::px_server::xsetsockopt(int option_, const void *optval_, size_t optvallen_)
 {
     switch (option_) {
-    case ZMQ_DISCONNECT_CALLBACK: {
-        if (optvallen_ != sizeof(zmq::disconnect_callback_arg)) {
-            errno = EINVAL;
-            return -1;
-        }
-        const zmq::disconnect_callback_arg *arg =
-                reinterpret_cast<const zmq::disconnect_callback_arg *>(optval_);
-        options.disconnect_callback = arg->func;
-        options.disconnect_callback_arg = arg->ctx;
-        return 0;
-    }
-    case ZMQ_ACCEPT_CALLBACK: {
-        if (optvallen_ != sizeof(zmq::accept_callback_arg)) {
-            errno = EINVAL;
-            return -1;
-        }
-        const zmq::accept_callback_arg *arg =
-                reinterpret_cast<const zmq::accept_callback_arg *>(optval_);
-        options.accept_callback = arg->func;
-        options.accept_callback_arg = arg->ctx;
-        return 0;
-    }
-    case ZMQ_RECV_CALLBACK: {
-        if (optvallen_ != sizeof(zmq::recv_callback_arg)) {
-            errno = EINVAL;
-            return -1;
-        }
-        const zmq::recv_callback_arg *arg =
-                reinterpret_cast<const zmq::recv_callback_arg *>(optval_);
-        options.recv_callback = arg->func;
-        options.recv_callback_arg = arg->ctx;
-        return 0;
-    }
     case ZMQ_DECODER_OPS:  {
         if (optvallen_ != sizeof(decoder_ops)) {
             errno = EINVAL;
@@ -633,6 +600,16 @@ zmq::px_server::xsetsockopt(int option_, const void *optval_, size_t optvallen_)
         options.dec_ops = *reinterpret_cast<const decoder_ops *>(optval_);
         options.has_decoder_ops = true;
 
+        return 0;
+    }
+    case ZMQ_CALLBACK: {
+        if (optvallen_ != sizeof(zmq::zmq_callback_arg)) {
+            errno = EINVAL;
+            return -1;
+        }
+        const zmq::zmq_callback_arg *arg =
+                    reinterpret_cast<const zmq::zmq_callback_arg *>(optval_);
+        options.zmq_callback = *arg;
         return 0;
     }
     default:

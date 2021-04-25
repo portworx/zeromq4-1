@@ -183,17 +183,10 @@ namespace zmq
         //  close socket.  Default is 30 secs.  0 means no handshake timeout.
         int handshake_ivl;
 
-	recv_callback_fn recv_callback;
-        void *recv_callback_arg;
-
         bool has_decoder_ops;
         decoder_ops dec_ops;
 
-	accept_callback_fn accept_callback;
-        void *accept_callback_arg;
-
-	disconnect_callback_fn disconnect_callback;
-        void *disconnect_callback_arg;
+	zmq_callback_arg zmq_callback;
     };
 }
 
