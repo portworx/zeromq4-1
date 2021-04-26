@@ -311,7 +311,7 @@ int zmq::tcp_connecter_t::open ()
 
     if (errno == ECONNREFUSED && options.zmq_callback.connrefused_callback) {
         zmq_id id;
-        set_id(id, options.identity, options.identity_size);
+        set_id(id, options.peer_identity, options.identity_size);
         options.zmq_callback.connrefused_callback(options.zmq_callback.connrefused_ctx, id);
     }
 
@@ -367,7 +367,7 @@ zmq::fd_t zmq::tcp_connecter_t::connect ()
 
 	if (errno == ECONNREFUSED && options.zmq_callback.connrefused_callback) {
             zmq_id id;
-            set_id(id, options.identity, options.identity_size);
+            set_id(id, options.peer_identity, options.identity_size);
             options.zmq_callback.connrefused_callback(options.zmq_callback.connrefused_ctx, id);
 	}
         return retired_fd;

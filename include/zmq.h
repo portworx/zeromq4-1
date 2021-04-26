@@ -345,6 +345,7 @@ ZMQ_EXPORT void *zmq_msg_push(zmq_msg_t *msg, size_t len);
 #define ZMQ_XPUB_NODROP 69
 #define ZMQ_CALLBACK 70
 #define ZMQ_DECODER_OPS 71
+#define ZMQ_PEER_IDENTITY 72
 
 #ifdef __cplusplus
 

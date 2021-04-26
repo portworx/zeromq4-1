@@ -114,6 +114,15 @@ int zmq::options_t::setsockopt (int option_, const void *optval_,
             }
             break;
 
+        case ZMQ_PEER_IDENTITY:
+            //  Identity is any binary string from 1 to 255 octets
+            if (optvallen_ > 0 && optvallen_ < 256) {
+                identity_size = optvallen_;
+                memcpy (peer_identity, optval_, identity_size);
+                return 0;
+            }
+            break;
+
         case ZMQ_RATE:
             if (is_int && value > 0) {
                 rate = value;
