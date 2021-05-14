@@ -152,6 +152,8 @@ namespace zmq
 
     	size_t hdr_size() const { return size() - content_->size; }
 
+	content_t *content() { return content_; }
+
     private:
         void init_lsm(size_t size);
 
