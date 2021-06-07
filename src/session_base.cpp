@@ -362,7 +362,7 @@ void zmq::session_base_t::process_attach (i_engine *engine_)
         pipe = pipes [0];
 
 	pipe->recv = options.zmq_callback.recv_callback;
-	pipe->recv_arg = options.zmq_callback.recv_ctx;
+	pipe->recv_arg = options.zmq_callback.ctx;
 
         //  Ask socket to plug into the remote end of the pipe.
         send_bind (socket, pipes [1]);

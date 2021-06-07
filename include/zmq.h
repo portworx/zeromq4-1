@@ -359,14 +359,11 @@ typedef void (*disconnect_callback_fn)(void *ctx, zmq_id id);
 typedef void (*connrefused_callback_fn)(void *ctx, zmq_id id);
 
 struct zmq_callback_arg {
-	recv_callback_fn recv_callback = NULL;
-	void *recv_ctx = NULL;
-	accept_callback_fn accept_callback = NULL;
-	void *accept_ctx = NULL;
-	disconnect_callback_fn disconnect_callback = NULL;
-	void *disconnect_ctx = NULL;
-	connrefused_callback_fn connrefused_callback = NULL;
-	void *connrefused_ctx = NULL;
+	void *ctx = nullptr;
+	recv_callback_fn recv_callback = nullptr;
+	accept_callback_fn accept_callback = nullptr;
+	disconnect_callback_fn disconnect_callback = nullptr;
+	connrefused_callback_fn connrefused_callback = nullptr;
 };
 
 enum error_reason_t {

@@ -851,7 +851,7 @@ void zmq::stream_engine_t::mechanism_ready ()
         if (sizeof(id_) - 1 >= identity.size()) {
             set_id(id_, identity.data(), identity.size());
 	    if (id_ > 0 && options.zmq_callback.recv_callback)
-                options.zmq_callback.accept_callback(options.zmq_callback.accept_ctx, id_, peer_address.c_str());
+                options.zmq_callback.accept_callback(options.zmq_callback.ctx, id_, peer_address.c_str());
         }
 
         const int rc = session->push_msg (&identity);
@@ -926,7 +926,7 @@ int zmq::stream_engine_t::decode_and_push (msg_t *msg_)
     if (options.zmq_callback.recv_callback && id_ != 0) {
         if (!(msg_->flags() & msg_t::more)) {
             msg_->set_id(id_);
-            options.zmq_callback.recv_callback(options.zmq_callback.recv_ctx, msg_);
+            options.zmq_callback.recv_callback(options.zmq_callback.ctx, msg_);
             return 0;
         } else {
             // disable callbacks if sender uses multi-frame messages
@@ -982,7 +982,7 @@ void zmq::stream_engine_t::error (error_reason_t reason)
     unplug ();
 
     if (id_ > 0 && options.zmq_callback.disconnect_callback) {
-        options.zmq_callback.disconnect_callback(options.zmq_callback.disconnect_ctx, id_);
+        options.zmq_callback.disconnect_callback(options.zmq_callback.ctx, id_);
     }
 
     delete this;
