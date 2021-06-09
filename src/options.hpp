@@ -67,7 +67,6 @@ namespace zmq
         //  Socket identity
         unsigned char identity_size;
         unsigned char identity [256];
-        unsigned char peer_identity [256];
 
         //  Maximum transfer rate [kb/s]. Default 100kb/s.
         int rate;

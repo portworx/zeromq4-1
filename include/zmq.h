@@ -345,7 +345,6 @@ ZMQ_EXPORT void *zmq_msg_push(zmq_msg_t *msg, size_t len);
 #define ZMQ_XPUB_NODROP 69
 #define ZMQ_CALLBACK 70
 #define ZMQ_DECODER_OPS 71
-#define ZMQ_PEER_IDENTITY 72
 
 #ifdef __cplusplus
 
@@ -356,7 +355,7 @@ class msg_t;
 typedef void (*recv_callback_fn)(void *ctx, zmq::msg_t *msg);
 typedef void (*accept_callback_fn)(void *ctx, zmq_id id, const char *addr);
 typedef void (*disconnect_callback_fn)(void *ctx, zmq_id id);
-typedef void (*connrefused_callback_fn)(void *ctx, zmq_id id);
+typedef void (*connrefused_callback_fn)(void *ctx);
 
 struct zmq_callback_arg {
 	void *ctx = nullptr;
