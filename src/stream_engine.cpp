@@ -981,7 +981,7 @@ void zmq::stream_engine_t::error (error_reason_t reason)
     session->engine_error (reason);
     unplug ();
 
-    if (id_ > 0 && options.zmq_callback.disconnect_callback) {
+    if (options.zmq_callback.disconnect_callback) {
         options.zmq_callback.disconnect_callback(options.zmq_callback.ctx, id_);
     }
 
