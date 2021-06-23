@@ -850,7 +850,7 @@ void zmq::stream_engine_t::mechanism_ready ()
         mechanism->peer_identity (&identity);
         if (sizeof(id_) - 1 >= identity.size()) {
             set_id(id_, identity.data(), identity.size());
-	    if (id_ > 0 && options.zmq_callback.recv_callback)
+	    if (id_ != zmq_id(0) && options.zmq_callback.recv_callback)
                 options.zmq_callback.accept_callback(options.zmq_callback.ctx, id_, peer_address.c_str());
         }
 
@@ -923,7 +923,7 @@ int zmq::stream_engine_t::decode_and_push (msg_t *msg_)
 
     if (mechanism->decode (msg_) == -1)
         return -1;
-    if (options.zmq_callback.recv_callback && id_ != 0) {
+    if (options.zmq_callback.recv_callback && id_ != zmq_id(0)) {
         if (!(msg_->flags() & msg_t::more)) {
             msg_->set_id(id_);
             options.zmq_callback.recv_callback(options.zmq_callback.ctx, msg_);

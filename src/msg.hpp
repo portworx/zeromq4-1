@@ -55,10 +55,11 @@ namespace zmq
 {
     inline void set_id(zmq_id &id, const void *data, size_t len) {
     	assert(len <= 7);
-    	id = len;
+	uint64_t val = len;
     	for (size_t i = 0u; i < len; ++i) {
-    		id |= (unsigned long)((unsigned char*)data)[i] << ((i + 1) * 8);
+    		val |= (unsigned long)((unsigned char*)data)[i] << ((i + 1) * 8);
     	}
+	id = zmq_id(val);
     }
 
     struct iovec_buf;

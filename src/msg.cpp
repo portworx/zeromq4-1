@@ -54,7 +54,7 @@ typedef char zmq_msg_size_check
 inline void zmq::msg_t::init_lsm(size_t size)
 {
     flags_ = 0;
-    id_ = 0;
+    id_ = zmq_id(0);
     size_ = size;
 }
 
