@@ -25,7 +25,7 @@ inline zmq_id zmq_id_pack(const uint8_t *val, size_t len) {
 	assert(len <= 7);
 	uint64_t id = len;
 	for (auto i = 0u; i < len; ++i) {
-		id |= val[i] << ((i + 1) * 8);
+		id |= static_cast<uint64_t>(val[i]) << ((i + 1) * 8);
 	}
 	return zmq_id(id);
 }
