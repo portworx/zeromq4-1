@@ -850,7 +850,7 @@ void zmq::stream_engine_t::mechanism_ready ()
         mechanism->peer_identity (&identity);
         if (sizeof(id_) - 1 >= identity.size()) {
             set_id(id_, identity.data(), identity.size());
-	    if (id_ != zmq_id(0) && options.zmq_callback.recv_callback)
+	    if (id_ != zmq_id(0) && options.zmq_callback.accept_callback)
                 options.zmq_callback.accept_callback(options.zmq_callback.ctx, id_, peer_address.c_str());
         }
 
