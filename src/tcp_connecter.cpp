@@ -149,6 +149,10 @@ void zmq::tcp_connecter_t::out_event ()
     terminate ();
 
     socket->event_connected (endpoint, fd);
+    if (options.zmq_callback.accept_callback) {
+        options.zmq_callback.accept_callback(options.zmq_callback.ctx, zmq_id(), nullptr);
+    }
+
 }
 
 void zmq::tcp_connecter_t::timer_event (int id_)
