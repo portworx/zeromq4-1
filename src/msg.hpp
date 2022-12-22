@@ -81,6 +81,7 @@ namespace zmq
             command = zmq::v2_protocol_t::command_flag,
 	    delimiter = 8,      //  Message is a delimiter
 	    pool_alloc = 16,    // memory was allocated from pool
+	    retransmit = 32,
             identity = 64,
             shared = 128
         };
@@ -100,6 +101,8 @@ namespace zmq
         void move (msg_t &src_);
         void copy (msg_t &src_);
         void *data ();
+
+	void *hdr() { return hdr_ + sizeof(hdr_) - hdr_size(); }
 
         void *push(size_t size);
 	void *pull(size_t size);
