@@ -121,7 +121,21 @@ int main (int argc, char *argv [])
         return 1;
     }
 
-    message_size = atoi (argv [1]);
+    char *end;
+    long signed_message_size = strtol(argv[1], &end, 0);
+    if (*end != 0) {
+        printf("Failed while trying to interpret argument: %s\n", argv[1]);
+        return 1;
+    }
+
+    if (signed_message_size < 0 ) {
+        printf("Message size cannot be negative\n");
+        return 1;
+    }
+
+    // Cast the value back to size_t if the message size is positive.
+    message_size = static_cast<size_t>(signed_message_size);
+
     message_count = atoi (argv [2]);
 
     ctx = zmq_init (1);
