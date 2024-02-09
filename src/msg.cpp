@@ -39,7 +39,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include <new>
-#include "stdint.hpp"
 #include "likely.hpp"
 #include "metadata.hpp"
 #include "err.hpp"
@@ -93,11 +92,11 @@ void zmq::msg_t::init_size (size_t size_)
 
 namespace {
 
-void do_nothing(void *, void *) {}
+void do_nothing(zmq::content_t *, void *) {}
 
 }
 
-void zmq::msg_t::init_data (void *data_, size_t size_, msg_free_fn *ffn_,
+void zmq::msg_t::init_data (void *data_, size_t size_, msg_free_fn ffn_,
     void *hint_)
 {
     if (ffn_ == nullptr) {
@@ -118,8 +117,8 @@ void zmq::msg_t::init_data (void *data_, size_t size_, msg_free_fn *ffn_,
     new(&content_->refcnt) zmq::atomic_counter_t();
 }
 
-void zmq::msg_t::init_content(zmq_content *data_, size_t size_,
-	msg_free_fn *ffn_, void *hint_)
+void zmq::msg_t::init_content(content_t *data_, size_t size_,
+	msg_free_fn ffn_, void *hint_)
 {
 	init_lsm(size_);
 	content_ = reinterpret_cast<content_t *>(data_);
@@ -134,7 +133,7 @@ void zmq::msg_t::init_content(zmq_content *data_, size_t size_,
 	new (&content_->refcnt) zmq::atomic_counter_t ();
 }
 
-void zmq::msg_t::init_iov(iovec *iov, int iovcnt, size_t size, msg_free_fn *ffn_, void *hint_)
+void zmq::msg_t::init_iov(iovec *iov, int iovcnt, size_t size, msg_free_fn ffn_, void *hint_)
 {
 	zmq_assert(iov != NULL && iovcnt > 0 && ffn_ != NULL);
 	init_lsm(size);
@@ -149,8 +148,8 @@ void zmq::msg_t::init_iov(iovec *iov, int iovcnt, size_t size, msg_free_fn *ffn_
 	new (&content_->refcnt) zmq::atomic_counter_t ();
 }
 
-void zmq::msg_t::init_iov_content(zmq_content *content, iovec *iov, int iovcnt, size_t size,
-	msg_free_fn *ffn_, void *hint_)
+void zmq::msg_t::init_iov_content(content_t *content, iovec *iov, int iovcnt, size_t size,
+	msg_free_fn ffn_, void *hint_)
 {
 	init_lsm(size);
 	content_ = (content_t*)content;
@@ -185,7 +184,7 @@ void zmq::msg_t::close()
     //  count has dropped to zero, deallocate it.
     if (!(flags & msg_t::shared) || !content->refcnt.sub(1)) {
         if (content->ffn)
-            content->ffn(content->data_iov->iov_base, content->hint);
+            content->ffn(content, content->hint);
 
         switch (flags & (malloced | pool_alloc)) {
         case pool_alloc:

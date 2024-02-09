@@ -570,14 +570,14 @@ void zmq_msg_init_size (zmq_msg_t *msg_, size_t size_)
 void zmq_msg_init_data (zmq_msg_t *msg_, void *data_, size_t size_,
     zmq_free_fn *ffn_, void *hint_)
 {
-    ((zmq::msg_t*) msg_)->init_data (data_, size_, ffn_, hint_);
+    ((zmq::msg_t*) msg_)->init_data (data_, size_, (zmq::msg_free_fn)ffn_, hint_);
 }
 
 void
 zmq_msg_init_content(zmq_msg_t *msg_, zmq_content *content_, size_t size_,
 	zmq_free_fn *ffn_, void *hint_)
 {
-    ((zmq::msg_t*) msg_)->init_content (content_, size_, ffn_, hint_);
+    ((zmq::msg_t*) msg_)->init_content ((zmq::content_t *)content_, size_, (zmq::msg_free_fn)ffn_, hint_);
 }
 
 void zmq_msg_init_iov (zmq_msg_t *msg, struct iovec *iov,
@@ -592,14 +592,15 @@ void zmq_msg_init_iov (zmq_msg_t *msg, struct iovec *iov,
 void zmq_msg_init_iov_size (zmq_msg_t *msg_, struct iovec *iov,
                       int iovcnt, size_t size, zmq_free_fn *ffn, void *hint)
 {
-    ((zmq::msg_t*) msg_)->init_iov(iov, iovcnt, size, ffn, hint);
+    ((zmq::msg_t*) msg_)->init_iov(iov, iovcnt, size, (zmq::msg_free_fn)ffn, hint);
 }
 
 void zmq_msg_init_iov_size_content (zmq_msg_t *msg,
         struct zmq_content *content, struct iovec *iov,
         int iovcnt, size_t size, zmq_free_fn *ffn, void *hint)
 {
-    ((zmq::msg_t*) msg)->init_iov_content(content, iov, iovcnt, size, ffn, hint);
+    ((zmq::msg_t*) msg)->init_iov_content((zmq::content_t*)content, iov, iovcnt, size,
+					  (zmq::msg_free_fn)ffn, hint);
 }
 
 int zmq_msg_send (zmq_msg_t *msg_, void *s_, int flags_)

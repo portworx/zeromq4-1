@@ -48,12 +48,32 @@
 //  zmq_free_fn defined in zmq.h.
 extern "C"
 {
-    typedef void (msg_free_fn) (void *data, void *hint);
 }
 
 namespace zmq
 {
-    inline void set_id(zmq_id &id, const void *data, size_t len) {
+struct content_t;
+
+using msg_free_fn = void (*) (content_t *content, void *hint);
+
+//  Shared message buffer. Message data are either allocated in one
+//  continuous block along with this structure - thus avoiding one
+//  malloc/free pair or they are stored in used-supplied memory.
+//  In the latter case, ffn member stores pointer to the function to be
+//  used to deallocate the data. If the buffer is actually shared (there
+//  are at least 2 references to it) refcount member contains number of
+//  references.
+struct content_t
+{
+    iovec *data_iov;
+    size_t size;
+    msg_free_fn ffn;
+    void *hint;
+    int iovcnt;
+    zmq::atomic_counter_t refcnt;
+};
+
+inline void set_id(zmq_id &id, const void *data, size_t len) {
     	assert(len <= 7);
 	uint64_t val = len;
     	for (size_t i = 0u; i < len; ++i) {
@@ -88,14 +108,14 @@ namespace zmq
 
         void init ();
         void init_size (size_t size_);
-        void init_data (void *data_, size_t size_, msg_free_fn *ffn_,
+        void init_data (void *data_, size_t size_, msg_free_fn ffn_,
             void *hint_);
-	void init_content(zmq_content *content_, size_t size_,
-		msg_free_fn *ffn_,
+	void init_content(content_t *content_, size_t size_,
+		msg_free_fn ffn_,
 		void *hint_);
-        void init_iov(iovec *iov, int iovcnt, size_t size, msg_free_fn *ffn_, void *hint);
-	void init_iov_content(zmq_content *content, iovec *iov, int iovcnt, size_t size,
-		msg_free_fn *ffn_, void *hint);
+        void init_iov(iovec *iov, int iovcnt, size_t size, msg_free_fn ffn_, void *hint);
+	void init_iov_content(content_t *content, iovec *iov, int iovcnt, size_t size,
+		msg_free_fn ffn_, void *hint);
         void init_delimiter ();
         void close ();
         void move (msg_t &src_);
@@ -136,23 +156,6 @@ namespace zmq
 	{
 		id_ = id;
 	}
-
-        //  Shared message buffer. Message data are either allocated in one
-        //  continuous block along with this structure - thus avoiding one
-        //  malloc/free pair or they are stored in used-supplied memory.
-        //  In the latter case, ffn member stores pointer to the function to be
-        //  used to deallocate the data. If the buffer is actually shared (there
-        //  are at least 2 references to it) refcount member contains number of
-        //  references.
-        struct content_t
-        {
-            iovec *data_iov;
-            size_t size;
-            msg_free_fn *ffn;
-            void *hint;
-            int iovcnt;
-            zmq::atomic_counter_t refcnt;
-        };
 
     	size_t hdr_size() const { return size() - content_->size; }
 
